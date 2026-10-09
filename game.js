@@ -14,7 +14,8 @@ const family=[
   {name:'Tata',pickupName:'Tatę',role:'Pracuje przy komputerze',color:'#679b91',hair:'#423c36',hairStyle:'short',x:39,y:14,station:1,seated:true,aboard:true,closeness:0},
   {name:'Nela',pickupName:'Nelę',role:'Tworzy na laptopie',color:'#c4ad66',hair:'#b97838',hairStyle:'long',x:-38,y:69,station:2,seated:true,aboard:true,closeness:0},
   {name:'Tosia',pickupName:'Tosię',role:'Czeka na rodzinę',color:'#c98b75',hair:'#b34e2e',hairStyle:'bob',glasses:true,x:0,y:0,station:null,seated:false,aboard:false,pickup:{x:410,y:-50},closeness:0},
-  {name:'Łucja',pickupName:'Łucję',role:'Czeka na rodzinę',color:'#8aa5b2',hair:'#51352e',hairStyle:'short',glasses:true,x:0,y:0,station:null,seated:false,aboard:false,pickup:{x:760,y:-230},closeness:0}
+  {name:'Łucja',pickupName:'Łucję',role:'Czeka na rodzinę',color:'#8aa5b2',hair:'#51352e',hairStyle:'short',glasses:true,x:0,y:0,station:null,seated:false,aboard:false,pickup:{x:760,y:-230},closeness:0},
+  {name:'Kasia',pickupName:'Kasię',role:'Spaceruje po mieście',color:'#8e768f',hair:'#6b4b3a',hairStyle:'long',glasses:true,x:0,y:0,station:null,seated:false,aboard:false,boardable:false,pickup:{x:-50,y:300},closeness:0}
 ];
 // Each crop is measured relative to its original photograph.
 const familyPhotos=[
@@ -22,7 +23,8 @@ const familyPhotos=[
   {label:'Tata · Andrzej',src:'images/tata-andrzej.jpg',pixel:'images/tata-andrzej-pixel.png',pixelCrop:[.13,.01,.74,.86],crop:[.025,.015,.92,.875]},
   {label:'Córka · Nela',src:'images/corka-nela.jpg',pixel:'images/corka-nela-pixel.png',pixelCrop:[.08,.01,.84,.98],crop:[.04,.015,.92,.875]},
   {label:'Córka · Tosia',srcs:['images/corka-tosia.jpg','images/corka-tosia.png'],pixel:'images/corka-tosia-pixel.png',pixelCrop:[.08,.01,.84,.98],crop:[0,.03,1,.91]},
-  {label:'Córka · Łucja',srcs:['images/corka-łucja.jpg','images/corka-łucja.png','images/corka-lucja.jpg','images/corka-lucja.png'],pixel:'images/corka-łucja-pixel.png',pixelCrop:[.1,.01,.8,.93],crop:[0,.04,1,.875]}
+  {label:'Córka · Łucja',srcs:['images/corka-łucja.jpg','images/corka-łucja.png','images/corka-lucja.jpg','images/corka-lucja.png'],pixel:'images/corka-łucja-pixel.png',pixelCrop:[.1,.01,.8,.93],crop:[0,.04,1,.875]},
+  {label:'Koleżanka · Kasia',src:'images/kolazanka-kasia.jpg',pixel:'images/kolazanka-kasia-pixel.png',pixelCrop:[.05,.01,.9,.96],crop:[0,0,1,1]}
 ];
 let characterStyle='photo';
 try{characterStyle=window.localStorage?.getItem('roadfamily-character-style')==='pixel'?'pixel':'photo'}catch{}
@@ -48,6 +50,9 @@ function loadFamilyPhotos(){
 let selected=0,mode='interior',zoom=2.2,roof=0,paused=false,time=0,distance=0,toastTimer=5,walked=false,taken=false;
 let money=0,lastMoneyShown=-1,bond=0,lastBondShown=-1;
 const coinParticles=[],heartParticles=[];
+let characterDialogTimer=0;
+const pickupDialogMessages=['Dzięki!','Co tak długo?','Wreszcie! Ile można czekać?','Dobrze, że jest wolne miejsce!','Następnym razem wyślijcie SMS-a!','Jedziemy, zanim zmienię zdanie!'];
+const kasiaDialogMessages=['Nie chcę!','Nie teraz!','Mam dziś inne plany!','Nie wsiadam bez playlisty na poziomie!','Ten van nie pasuje do mojego outfitu!','Moja intuicja mówi: jeszcze nie.'];
 const car={x:350,y:650,angle:0,speed:32,autoX:350};
 const keys=new Set();
 const touchKeys=new Set();
@@ -86,6 +91,12 @@ function buildFamily(){
   if($('aboard-count'))$('aboard-count').textContent=String(aboard.length+1).padStart(2,'0')+' / 06';
 }
 function toast(s){$('toast').textContent=s;toastTimer=4}
+function showCharacterDialog(p,messages){
+  const index=family.indexOf(p),message=messages[Math.floor(Math.random()*messages.length)];
+  $('character-dialog-image').src=familyPhotos[index].pixel;$('character-dialog-image').alt='Pikselowy portret: '+p.name;
+  $('character-dialog-name').textContent=p.name;$('character-dialog-message').textContent=message;$('character-dialog').hidden=false;characterDialogTimer=3.6;
+}
+function updateCharacterDialog(dt){if(characterDialogTimer<=0)return;characterDialogTimer=Math.max(0,characterDialogTimer-dt);if(characterDialogTimer===0)$('character-dialog').hidden=true}
 function atPassengerSeat(){return mode==='interior'&&!!family[selected].passenger}
 function insideInteractionZone(p,zone){return p.x>=zone.left&&p.x<=zone.right&&p.y>=zone.top&&p.y<=zone.bottom}
 function atDriverPlace(p){return insideInteractionZone(p,driverInteractionZone)}
@@ -105,8 +116,9 @@ function hugFamily(p,other){
   bond++;other.closeness=Math.min(100,(other.closeness||0)+20);
   heartParticles.push({x:(p.x+other.x)/2,y:(p.y+other.y)/2-13,age:0,life:1.15,drift:(Math.random()-.5)*3});toast(p.name+' i '+other.name+' przytulają się ♥');
 }
-function nearestWaitingFamily(){return family.filter(p=>!p.aboard&&p.pickup).map(p=>({p,distance:Math.hypot(car.x-p.pickup.x,car.y-p.pickup.y)})).sort((a,b)=>a.distance-b.distance)[0]}
-function waitingFamilyNearCar(){const nearest=nearestWaitingFamily();return nearest&&nearest.distance<82?nearest.p:null}
+function streetPeopleByDistance(){return family.filter(p=>!p.aboard&&p.pickup).map(p=>({p,distance:Math.hypot(car.x-p.pickup.x,car.y-p.pickup.y)})).sort((a,b)=>a.distance-b.distance)}
+function nearestWaitingFamily(){return streetPeopleByDistance().find(({p})=>p.boardable!==false)}
+function waitingFamilyNearCar(){const nearest=streetPeopleByDistance()[0];return nearest&&nearest.distance<82?nearest.p:null}
 function standingSpotForSeat(index){
   const seat=cabinSeats[index]||cabinSeats[0];
   const candidates=index>=3?[{x:16,y:Math.min(78,seat.y)},{x:14,y:46},{x:0,y:82}]:[{x:seat.x<0?-17:17,y:Math.min(84,seat.y+13)},{x:0,y:38}];
@@ -153,7 +165,7 @@ function interact(){
   const p=family[selected];
   if(mode==='driving'){
     const waiting=waitingFamilyNearCar();
-    if(waiting){const freeSeat=cabinSeats.findIndex((seat,index)=>!workstationOccupant(index,waiting));waiting.aboard=true;waiting.seated=freeSeat>=0;waiting.station=freeSeat>=0?freeSeat:null;if(freeSeat>=0){waiting.x=cabinSeats[freeSeat].x;waiting.y=cabinSeats[freeSeat].y}else{waiting.x=0;waiting.y=38}buildFamily();toast(waiting.name+' jest już z rodziną!');return}
+    if(waiting){if(waiting.boardable===false){showCharacterDialog(waiting,kasiaDialogMessages);return}const freeSeat=cabinSeats.findIndex((seat,index)=>!workstationOccupant(index,waiting));waiting.aboard=true;waiting.seated=freeSeat>=0;waiting.station=freeSeat>=0?freeSeat:null;if(freeSeat>=0){waiting.x=cabinSeats[freeSeat].x;waiting.y=cabinSeats[freeSeat].y}else{waiting.x=0;waiting.y=38}buildFamily();showCharacterDialog(waiting,pickupDialogMessages);return}
     mode='interior';p.x=-12;p.y=-53;p.seated=false;p.station=null;car.autoX=Math.round(car.x/350)*350;car.speed=32;buildFamily();toast('Kierowca znów prowadzi. Wróć do dowolnego wolnego miejsca.');return
   }
   if(p.passenger){p.passenger=false;p.seated=false;p.station=null;p.x=17;p.y=-34;buildFamily();toast('Wstajesz z fotela pasażera. Radio gra dalej.');return}
@@ -268,7 +280,7 @@ function drawHeartParticles(){
 function update(dt){
   window.updateTouchControls?.();
   window.updateRadioControls?.();
-  if(paused)return;time+=dt;toastTimer-=dt;updateEconomy(dt);updateCloseness(dt);
+  updateCharacterDialog(dt);if(paused)return;time+=dt;toastTimer-=dt;updateEconomy(dt);updateCloseness(dt);
   const p=family[selected];if(mode==='interior'){
     // Autopilot follows the northbound avenue while everyone works.
     car.angle+=(0-car.angle)*Math.min(1,dt*4);car.x+=(car.autoX-car.x)*Math.min(1,dt*2);car.y-=23*dt;car.speed=32;
@@ -284,9 +296,9 @@ function update(dt){
   $('speed').textContent=Math.round(Math.abs(car.speed));$('distance').textContent=distance.toFixed(1);$('view-label').textContent=mode==='interior'?'WNĘTRZE SAMOCHODU':'MIASTO · ZA KIEROWNICĄ';
   $('driver-name').textContent=mode==='driving'?p.name:'Kierowca';$('driver-status').textContent=mode==='driving'?'Za kierownicą · sterujesz':'Za kierownicą · autopilot';
   const waitingNearby=mode==='driving'?waitingFamilyNearCar():null;
-  $('status').textContent=waitingNearby?waitingNearby.name+' czeka przy drodze — zatrzymaj się i zabierz ją.':mode==='driving'?p.name+' prowadzi. Szukaj Tosi i Łucji przy drodze.':p.passenger?p.name+' przy radiu. Kierowca prowadzi.':p.seated?'Kierowca prowadzi. Rodzina pracuje.':p.name+' spaceruje. Kierowca prowadzi.';
+  $('status').textContent=waitingNearby?(waitingNearby.boardable===false?waitingNearby.name+' jest przy drodze.':waitingNearby.name+' czeka przy drodze — zatrzymaj się i zabierz ją.'):mode==='driving'?p.name+' prowadzi. Szukaj Tosi i Łucji przy drodze.':p.passenger?p.name+' przy radiu. Kierowca prowadzi.':p.seated?'Kierowca prowadzi. Rodzina pracuje.':p.name+' spaceruje. Kierowca prowadzi.';
   $('move-label').textContent=mode==='driving'?'Gaz / hamulec / skręt':'Poruszanie';$('control-mode').textContent=mode==='driving'?'Nowa perspektywa. Ten sam dom.':'W środku jest całkiem przytulnie.';
-  $('step-one').classList.toggle('done',walked);$('step-two').classList.toggle('done',p.y<-42||taken);$('step-three').classList.toggle('done',family.every(member=>member.aboard));
+  $('step-one').classList.toggle('done',walked);$('step-two').classList.toggle('done',p.y<-42||taken);$('step-three').classList.toggle('done',family.filter(member=>member.boardable!==false).every(member=>member.aboard));
   if(toastTimer<=0){const target=nearestWorkstation(p);$('toast').textContent=waitingNearby?'E  zabierz '+(waitingNearby.pickupName||waitingNearby.name):mode==='driving'?'W / S  gaz i hamulec     A / D  skręt     E  wróć do wnętrza':p.seated?'E  wstań od miejsca     1–5  wybierz osobę':atDriverPlace(p)?'E  przejmij kierownicę':target?(workstationOccupant(target.index,p)?'To miejsce jest zajęte':'E  usiądź przy wolnym miejscu'):'WASD  spaceruj     Podejdź do kierowcy z przodu ↑'}
   if(toastTimer<=0&&touchHint(true,false))$('toast').textContent=mode==='driving'?'Joystick: ↑ gaz · ↓ hamulec · ← → skręt':p.seated?'Dotknij „Wstań”. Osobę wybierzesz na jej karcie.':atDriverPlace(p)?'Dotknij „Przejmij kierownicę”.':'Joystick: spacer · Podejdź do kierowcy z przodu ↑';
   if(toastTimer<=0&&atPassengerSeat())$('toast').textContent=touchHint('Steruj radiem przyciskami na ekranie.','R — radio wł. / wył. · [ / ] — utwór · E — wstań');
