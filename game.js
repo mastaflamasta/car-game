@@ -3,39 +3,72 @@ const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
 ctx.imageSmoothingEnabled=false;
 const $=id=>document.getElementById(id);
 const family=[{name:'Mama',role:'Projektuje przy komputerze',color:'#d88860',hair:'#724135',x:-39,y:14,seat:{x:-39,y:14},seated:true},{name:'Tata',role:'Pracuje przy komputerze',color:'#679b91',hair:'#423c36',x:39,y:14,seat:{x:39,y:14},seated:true},{name:'Córka',role:'Tworzy na laptopie',color:'#c4ad66',hair:'#593d30',x:-38,y:69,seat:{x:-38,y:69},seated:true}];
+// Each crop is measured relative to its original photograph.
+const familyPhotos=[
+  {label:'Mama · Dagmara',src:'images/mama-dagmara.jpg',crop:[.05,.025,.88,.81]},
+  {label:'Tata · Andrzej',src:'images/tata-andrzej.jpg',crop:[.025,.015,.92,.875]},
+  {label:'Córka · Nela',src:'images/corka-nela.jpg',crop:[.04,.015,.92,.875]}
+];
+function loadFamilyPhotos(){
+  familyPhotos.forEach((photo,i)=>{
+    const img=new Image();
+    img.onload=()=>{
+      const [x,y,w,h]=photo.crop;
+      const face=document.createElement('canvas');face.width=96;face.height=112;
+      const c=face.getContext('2d');
+      c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
+      c.beginPath();c.ellipse(48,56,48,56,0,0,Math.PI*2);c.clip();
+      c.drawImage(img,x*img.naturalWidth,y*img.naturalHeight,w*img.naturalWidth,h*img.naturalHeight,0,0,96,112);
+      family[i].face=face;buildFamily();
+    };
+    // The original pixel face stays available if a photo cannot load.
+    img.onerror=()=>console.warn('Nie udało się wczytać portretu:',photo.src);
+    img.src=photo.src;
+  });
+}
 let selected=0,mode='interior',zoom=2.2,roof=0,paused=false,time=0,distance=0,toastTimer=5,walked=false,taken=false;
 const car={x:350,y:650,angle:0,speed:32,autoX:350};
 const keys=new Set();
+const touchKeys=new Set();
+const touchHint=(mobile,keyboard)=>window.matchMedia('(max-width:740px), (any-pointer:coarse)').matches?mobile:keyboard;
 const rect=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),w,h)};
 function person(p,x,y,dir=0,walking=false){
   const step=walking?Math.sin(time*15)*2:0;
   rect(x-5,y+7,4,5+step,'#303e39');rect(x+1,y+7,4,5-step,'#303e39');
   rect(x-7,y,14,9,p.color);rect(x-9,y+1,3,6,'#e2b88d');rect(x+6,y+1,3,6,'#e2b88d');
+  if(p.face){
+    ctx.save();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+    ctx.drawImage(p.face,Math.round(x-9),Math.round(y-17),18,21);ctx.restore();
+    return;
+  }
   rect(x-6,y-10,12,11,p.hair);rect(x-5,y-6,10,7,'#e2b88d');rect(x-6,y-10,12,4,p.hair);
   if(p.name==='Córka'){rect(x-7,y-8,3,12,p.hair);rect(x+5,y-8,3,12,p.hair)}
   rect(x-3,y-3,2,2,'#35352f');rect(x+2,y-3,2,2,'#35352f');
 }
 function buildFamily(){
-  $('family').innerHTML=family.map((p,i)=>`<button class="person ${i===selected?'active':''}" data-person="${i}" aria-pressed="${i===selected}"><canvas class="portrait" width="24" height="28" id="portrait-${i}"></canvas><span class="person-info"><strong>${p.name}</strong><small>${p.seated?p.role:(mode==='driving'&&i===selected?'Prowadzi samochód':'Spaceruje po wnętrzu')}</small></span><span class="shortcut">${i+1}</span></button>`).join('');
+  $('family').innerHTML=family.map((p,i)=>`<button class="person ${i===selected?'active':''}" data-person="${i}" aria-pressed="${i===selected}"><canvas class="portrait ${p.face?'photo-portrait':''}" width="96" height="112" id="portrait-${i}" aria-hidden="true"></canvas><span class="person-info"><strong>${familyPhotos[i].label}</strong><small>${p.seated?p.role:(mode==='driving'&&i===selected?'Prowadzi samochód':'Spaceruje po wnętrzu')}</small></span><span class="shortcut">${i+1}</span></button>`).join('');
   family.forEach((p,i)=>{const c=$('portrait-'+i).getContext('2d');c.fillStyle='#34402d';c.fillRect(0,0,24,28);c.fillStyle=p.color;c.fillRect(5,16,14,12);c.fillStyle=p.hair;c.fillRect(6,4,12,13);c.fillStyle='#e2b88d';c.fillRect(7,9,10,9);c.fillStyle='#35352f';c.fillRect(9,12,2,2);c.fillRect(14,12,2,2)});
+  family.forEach((p,i)=>{const c=$('portrait-'+i).getContext('2d');if(p.face){c.clearRect(0,0,96,112);c.drawImage(p.face,0,0)}else{const fallback=document.createElement('canvas');fallback.width=24;fallback.height=28;fallback.getContext('2d').drawImage(c.canvas,0,0,24,28,0,0,24,28);c.clearRect(0,0,96,112);c.imageSmoothingEnabled=false;c.drawImage(fallback,0,0,96,112)}});
   document.querySelectorAll('[data-person]').forEach(b=>b.onclick=()=>selectPerson(+b.dataset.person));
 }
 function toast(s){$('toast').textContent=s;toastTimer=4}
-function selectPerson(i){if(mode==='driving'){toast('Najpierw wróć do wnętrza klawiszem E.');return}selected=i;buildFamily();toast(family[i].name+' · E — wstań / usiądź, WASD — spacer')}
-function togglePause(){paused=!paused;$('pause-overlay').hidden=!paused;$('pause').innerHTML=paused?'▶ <span>Wznów</span>':'Ⅱ <span>Pauza</span>'}
+function selectPerson(i){if(mode==='driving'){toast(touchHint('Najpierw dotknij „Wróć do wnętrza”.','Najpierw wróć do wnętrza klawiszem E.'));return}window.resetTouchControls?.();selected=i;buildFamily();toast(family[i].name+touchHint(' · Dotknij „Wstań”, potem użyj joysticka.',' · E — wstań / usiądź, WASD — spacer'))}
+function togglePause(){paused=!paused;keys.clear();window.resetTouchControls?.();$('pause-overlay').hidden=!paused;$('pause').innerHTML=paused?'▶ <span>Wznów</span>':'Ⅱ <span>Pauza</span>';window.updateTouchControls?.()}
 $('pause').onclick=togglePause;
 function interact(){
   if(paused)return;
+  window.resetTouchControls?.();
   const p=family[selected];
   if(mode==='driving'){mode='interior';p.x=-12;p.y=-53;car.autoX=Math.round(car.x/350)*350;car.speed=32;buildFamily();toast('Kierowca znów prowadzi. Wróć do swojego stanowiska.');return}
   if(p.seated){p.seated=false;p.x=p.seat.x<0?-17:17;p.y=p.seat.y+13;walked=true;buildFamily();toast('Podejdź do kierowcy z przodu samochodu.');return}
-  if(p.y<-42){mode='driving';taken=true;buildFamily();toast(p.name+' prowadzi · W/S — gaz i hamulec · A/D — skręt · E — wnętrze');return}
+  if(p.y<-42){mode='driving';taken=true;buildFamily();toast(p.name+touchHint(' prowadzi · Joystick: gaz, hamulec i skręt · „Wróć” — wnętrze',' prowadzi · W/S — gaz i hamulec · A/D — skręt · E — wnętrze'));return}
   if(Math.hypot(p.x-p.seat.x,p.y-p.seat.y)<33){p.seated=true;p.x=p.seat.x;p.y=p.seat.y;buildFamily();toast(p.name+' wraca do '+(selected===2?'laptopa.':'komputera.'));return}
   toast('Podejdź do kierowcy lub do swojego stanowiska.');
 }
 window.addEventListener('keydown',e=>{if(e.target instanceof HTMLInputElement)return;const k=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright',' ','e','p','1','2','3'].includes(k))e.preventDefault();if(!e.repeat){if(k==='e')interact();if(k==='p')togglePause();if(['1','2','3'].includes(k))selectPerson(+k-1)}keys.add(k)});
-window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>keys.clear());
-const down=(...k)=>k.some(v=>keys.has(v));
+window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>{keys.clear();window.resetTouchControls?.()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){keys.clear();window.resetTouchControls?.()}});
+const down=(...k)=>k.some(v=>keys.has(v)||touchKeys.has(v));
 function hash(x,y){return Math.abs(Math.sin(x*127.1+y*311.7)*43758.5453)%1}
 function tree(x,y){rect(x+2,y+3,5,12,'#516047');rect(x-9,y-8,20,19,'#374e3a');rect(x-12,y-4,25,10,'#405d41');rect(x-7,y-10,14,10,'#57754b');rect(x-5,y-9,7,3,'#7d9259')}
 function world(){
@@ -89,13 +122,14 @@ function interior(){
 }
 function canWalk(x,y){if(x<-48||x>48||y<-54||y>89)return false;const obstacles=[[-56,-21,-23,10],[23,-21,56,10],[-56,35,-23,65],[27,52,56,90]];return !obstacles.some(([a,b,c,d])=>x>a-5&&x<c+5&&y>b-8&&y<d+8)}
 function update(dt){
+  window.updateTouchControls?.();
   if(paused)return;time+=dt;toastTimer-=dt;
   const p=family[selected];if(mode==='interior'){
     // Autopilot follows the northbound avenue while everyone works.
     car.angle+=(0-car.angle)*Math.min(1,dt*4);car.x+=(car.autoX-car.x)*Math.min(1,dt*2);car.y-=23*dt;car.speed=32;
     if(!p.seated){let dx=(down('d','arrowright')?1:0)-(down('a','arrowleft')?1:0),dy=(down('s','arrowdown')?1:0)-(down('w','arrowup')?1:0);const l=Math.hypot(dx,dy)||1;dx=dx/l*47*dt;dy=dy/l*47*dt;if(canWalk(p.x+dx,p.y))p.x+=dx;if(canWalk(p.x,p.y+dy))p.y+=dy}
   }else{
-    const gas=down('w','arrowup'),brake=down('s','arrowdown',' ');car.speed+=(gas?48:brake?-85:-10)*dt;car.speed=Math.max(-22,Math.min(100,car.speed));if(Math.abs(car.speed)<.5)car.speed=0;
+    const gas=down('w','arrowup'),brake=down('s','arrowdown',' ');car.speed+=(brake?-85:gas?48:-10)*dt;car.speed=Math.max(-22,Math.min(100,car.speed));if(Math.abs(car.speed)<.5)car.speed=0;
     car.angle+=((down('d','arrowright')?1:0)-(down('a','arrowleft')?1:0))*dt*1.9*(car.speed/70);
     const nx=car.x+Math.sin(car.angle)*car.speed*dt*.95,ny=car.y-Math.cos(car.angle)*car.speed*dt*.95;
     const bx=((nx%350)+350)%350,by=((ny%350)+350)%350;
@@ -108,6 +142,7 @@ function update(dt){
   $('move-label').textContent=mode==='driving'?'Gaz / hamulec / skręt':'Poruszanie';$('control-mode').textContent=mode==='driving'?'Nowa perspektywa. Ten sam dom.':'W środku jest całkiem przytulnie.';
   $('step-one').classList.toggle('done',walked);$('step-two').classList.toggle('done',p.y<-42||taken);$('step-three').classList.toggle('done',taken);
   if(toastTimer<=0){$('toast').textContent=mode==='driving'?'W / S  gaz i hamulec     A / D  skręt     E  wróć do wnętrza':p.seated?'E  wstań od '+(selected===2?'laptopa':'komputera')+'     1 / 2 / 3  wybierz osobę':p.y<-42?'E  przejmij kierownicę':Math.hypot(p.x-p.seat.x,p.y-p.seat.y)<33?'E  usiądź przy swoim stanowisku':'WASD  spaceruj     Podejdź do kierowcy z przodu ↑'}
+  if(toastTimer<=0&&touchHint(true,false))$('toast').textContent=mode==='driving'?'Joystick: ↑ gaz · ↓ hamulec · ← → skręt':p.seated?'Dotknij „Wstań”. Osobę wybierzesz na jej karcie.':p.y<-42?'Dotknij „Przejmij kierownicę”.':'Joystick: spacer · Podejdź do kierowcy z przodu ↑';
 }
 function draw(){ctx.clearRect(0,0,640,420);ctx.save();ctx.translate(320,210);ctx.scale(zoom,zoom);ctx.translate(-car.x,-car.y);world();interior();ctx.restore();
   // Pixel corner markers and quiet scene caption.
@@ -115,4 +150,4 @@ function draw(){ctx.clearRect(0,0,640,420);ctx.save();ctx.translate(320,210);ctx
   ctx.fillStyle='#edf0cf';ctx.font='9px monospace';ctx.fillText(mode==='driving'?'RODZINNA PODRÓŻ / WIDOK MIASTA':'MOBILNY DOM / '+family[selected].name.toUpperCase(),24,36);
 }
 let last=performance.now();function frame(now){const dt=Math.min((now-last)/1000,.04);last=now;update(dt);gameAudio.update(dt,{mode,speed:car.speed,paused,seats:family.map(p=>p.seated)});draw();requestAnimationFrame(frame)}
-buildFamily();requestAnimationFrame(frame);
+buildFamily();loadFamilyPhotos();requestAnimationFrame(frame);

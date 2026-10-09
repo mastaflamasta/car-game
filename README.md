@@ -10,9 +10,19 @@ Otwórz `index.html` w przeglądarce. Gra nie wymaga instalowania zależności a
 - **Spacja**: hamulec podczas jazdy.
 - **P**: pauza.
 
+Na telefonie i urządzeniach z ekranem dotykowym pod grą pojawia się joystick i przyciski:
+
+- **Joystick**: przeciągnij w kierunku spaceru; za kierownicą w górę dodajesz gazu, w dół hamujesz lub cofasz, a w lewo/prawo skręcasz.
+- **Wstań / Usiądź / Przejmij kierownicę / Wróć do wnętrza**: przycisk zmienia opis zależnie od sytuacji.
+- **Hamulec**: przytrzymaj podczas jazdy; działa jednocześnie z joystickiem i ma pierwszeństwo przed gazem.
+- **Pauza / Wznów**: zatrzymuje lub wznawia grę.
+- Dotknij karty Dagmary, Andrzeja lub Neli, aby wybrać postać.
+
+Puszczenie joysticka, anulowanie dotyku, zmiana postaci, pauza i opuszczenie karty zerują sterowanie. Po obróceniu telefonu joystick wraca do środka. Aby otworzyć grę na telefonie, udostępnij pliki przez serwer WWW lub hosting i otwórz jego adres w przeglądarce telefonu.
+
 Kierowca automatycznie jedzie ulicą, gdy rodzina jest we wnętrzu. Mama i tata mają komputery, córka laptop. Po przejęciu kierownicy kamera odsuwa się, a dach zasłania wnętrze. Budynki zatrzymują samochód. Wnętrze ma kolizje ze stanowiskami i wyposażeniem.
 
-Grafika jest rysowana w Canvas, bez zewnętrznych zasobów graficznych. Opcjonalne fonty Google mają lokalne fonty zapasowe. Prototyp jest przeznaczony do klawiatury; nie zawiera multiplayera ani zapisu stanu.
+Grafika jest rysowana w Canvas. Dagmara, Andrzej i Nela mają portrety oraz twarze ze zdjęć w `images/mama-dagmara.jpg`, `images/tata-andrzej.jpg` i `images/corka-nela.jpg`. Gra kadruje zdjęcia i przygotowuje owalne twarze lokalnie podczas wczytywania; oryginały pozostają bez zmian. Jeśli zdjęcie się nie wczyta, zostaje twarz pikselowa. Opcjonalne fonty Google mają lokalne fonty zapasowe. Prototyp obsługuje klawiaturę i ekran dotykowy; nie zawiera multiplayera ani zapisu stanu.
 
 Dźwięki są generowane lokalnie przez Web Audio: silnik zależny od prędkości, szum ulicy, klawiatury siedzących członków rodziny oraz sygnały interakcji i zmiany kierowcy. Odtwarzanie zaczyna się po pierwszym kliknięciu lub naciśnięciu klawisza. Przycisk „Dźwięk” wycisza całość; pauza i ukrycie karty także wyciszają grę.
 Głośność jest regulowana suwakiem w nagłówku (domyślnie 80%). Ustawienie jest zapamiętywane w tej przeglądarce. Ogranicznik dynamiki łagodzi szczyty przy większej głośności.
