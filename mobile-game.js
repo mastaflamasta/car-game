@@ -10,9 +10,9 @@
   const toolbar = document.createElement('div');
   toolbar.className = 'mobile-game-toolbar';
   toolbar.setAttribute('aria-label', 'Ustawienia gry');
-  const money = document.getElementById('money-counter');
+  const scores = document.getElementById('score-counters');
   const settings = document.getElementById('settings-toggle');
-  if (money) toolbar.append(money);
+  if (scores) toolbar.append(scores);
   if (settings) toolbar.append(settings);
   if (document.documentElement.requestFullscreen) {
     const fullscreen = document.createElement('button');

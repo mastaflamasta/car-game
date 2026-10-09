@@ -37,18 +37,18 @@ function loadFamilyPhotos(){
     const sources=photo.srcs||[photo.src];let sourceIndex=0;
     img.onerror=()=>{sourceIndex++;if(sourceIndex<sources.length)img.src=sources[sourceIndex];else console.warn('Nie udało się wczytać portretu:',sources.join(', '))};
     img.src=sources[sourceIndex];
-    const pixel=new Image();pixel.onload=()=>{family[i].pixel=pixel;const [x,y,w,h]=photo.pixelCrop;const face=document.createElement('canvas');face.width=14;face.height=17;const c=face.getContext('2d');c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';c.drawImage(pixel,x*pixel.naturalWidth,y*pixel.naturalHeight,w*pixel.naturalWidth,h*pixel.naturalHeight,0,0,14,17);family[i].pixelFace=face;buildFamily()};pixel.onerror=()=>console.warn('Nie udało się wczytać grafiki pixel art:',photo.pixel);pixel.src=photo.pixel;
+    const pixel=new Image();pixel.onload=()=>{family[i].pixel=pixel;buildFamily()};pixel.onerror=()=>console.warn('Nie udało się wczytać grafiki pixel art:',photo.pixel);pixel.src=photo.pixel;
   });
 }
 let selected=0,mode='interior',zoom=2.2,roof=0,paused=false,time=0,distance=0,toastTimer=5,walked=false,taken=false;
-let money=0,lastMoneyShown=-1;
-const coinParticles=[];
+let money=0,lastMoneyShown=-1,bond=0,lastBondShown=-1;
+const coinParticles=[],heartParticles=[];
 const car={x:350,y:650,angle:0,speed:32,autoX:350};
 const keys=new Set();
 const touchKeys=new Set();
 const touchHint=(mobile,keyboard)=>window.matchMedia('(max-width:740px), (any-pointer:coarse)').matches?mobile:keyboard;
 const rect=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),w,h)};
-const characterArt=p=>characterStyle==='pixel'&&(p.pixelFace||p.pixel)?(p.pixelFace||p.pixel):p.face;
+const characterArt=p=>characterStyle==='pixel'&&p.pixel?p.pixel:p.face;
 const characterPortraitArt=p=>characterStyle==='pixel'&&p.pixel?p.pixel:p.face;
 function drawPixelHead(p,x,y){
   const skin='#e2b88d',line='#40352f',light='#f0c69a';
@@ -67,8 +67,7 @@ function person(p,x,y,dir=0,walking=false){
   const art=characterArt(p);
   if(art){
     ctx.save();ctx.imageSmoothingEnabled=characterStyle!=='pixel';if(characterStyle!=='pixel')ctx.imageSmoothingQuality='high';
-    const width=characterStyle==='pixel'?14:18,height=characterStyle==='pixel'?17:21;
-    ctx.drawImage(art,Math.round(x-width/2),Math.round(y-(characterStyle==='pixel'?14:17)),width,height);ctx.restore();
+    ctx.drawImage(art,Math.round(x-9),Math.round(y-17),18,21);ctx.restore();
     return;
   }
   drawPixelHead(p,x,y);
@@ -77,7 +76,7 @@ function buildFamily(){
   const aboard=family.map((p,i)=>({p,i})).filter(({p})=>p.aboard);
   $('family').innerHTML=aboard.map(({p,i})=>`<button class="person ${i===selected?'active':''}" data-person="${i}" aria-pressed="${i===selected}"><canvas class="portrait ${characterStyle==='photo'&&p.face?'photo-portrait':'pixel-portrait'}" width="96" height="112" id="portrait-${i}" aria-hidden="true"></canvas><span class="person-info"><strong>${familyPhotos[i].label}</strong><small>${p.passenger?'Pasażer · obsługuje radio':p.seated?'Siedzi przy '+cabinSeats[p.station].label:(mode==='driving'&&i===selected?'Prowadzi samochód':'Spaceruje po wnętrzu')}</small></span><span class="shortcut">${i+1}</span></button>`).join('');
   aboard.forEach(({p,i})=>{const c=$('portrait-'+i).getContext('2d');c.fillStyle='#34402d';c.fillRect(0,0,24,28);c.fillStyle=p.color;c.fillRect(5,16,14,12);c.fillStyle=p.hair;c.fillRect(6,4,12,13);c.fillStyle='#e2b88d';c.fillRect(7,9,10,9);c.fillStyle='#35352f';c.fillRect(9,12,2,2);c.fillRect(14,12,2,2)});
-  aboard.forEach(({p,i})=>{const c=$('portrait-'+i).getContext('2d'),art=characterPortraitArt(p);if(art){c.clearRect(0,0,96,112);c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';if(characterStyle==='pixel'){const ratio=Math.min(96/art.naturalWidth,112/art.naturalHeight),w=art.naturalWidth*ratio,h=art.naturalHeight*ratio;c.drawImage(art,(96-w)/2,(112-h)/2,w,h)}else c.drawImage(art,0,0,96,112)}else{const fallback=document.createElement('canvas');fallback.width=24;fallback.height=28;fallback.getContext('2d').drawImage(c.canvas,0,0,24,28,0,0,24,28);c.clearRect(0,0,96,112);c.imageSmoothingEnabled=false;c.drawImage(fallback,0,0,96,112)}});
+  aboard.forEach(({p,i})=>{const c=$('portrait-'+i).getContext('2d'),art=characterPortraitArt(p);if(art){c.clearRect(0,0,96,112);c.imageSmoothingEnabled=characterStyle!=='pixel';if(characterStyle==='pixel'){const ratio=Math.min(96/art.naturalWidth,112/art.naturalHeight),w=art.naturalWidth*ratio,h=art.naturalHeight*ratio;c.drawImage(art,(96-w)/2,(112-h)/2,w,h)}else c.drawImage(art,0,0,96,112)}else{const fallback=document.createElement('canvas');fallback.width=24;fallback.height=28;fallback.getContext('2d').drawImage(c.canvas,0,0,24,28,0,0,24,28);c.clearRect(0,0,96,112);c.imageSmoothingEnabled=false;c.drawImage(fallback,0,0,96,112)}});
   document.querySelectorAll('[data-person]').forEach(b=>b.onclick=()=>selectPerson(+b.dataset.person));
   if($('aboard-count'))$('aboard-count').textContent=String(aboard.length+1).padStart(2,'0')+' / 06';
 }
@@ -85,6 +84,12 @@ function toast(s){$('toast').textContent=s;toastTimer=4}
 function atPassengerSeat(){return mode==='interior'&&!!family[selected].passenger}
 function nearestWorkstation(p){let best=null;cabinSeats.forEach((seat,index)=>{const distance=Math.hypot(p.x-seat.x,p.y-seat.y);if(distance<33&&(!best||distance<best.distance))best={seat,index,distance}});return best}
 function workstationOccupant(index,p){return family.find(other=>other!==p&&other.seated&&!other.passenger&&other.station===index)}
+function touchingFamilyMember(p){
+  if(!p||p.seated||p.passenger)return null;
+  return family.filter(other=>other!==p&&other.aboard)
+    .map(other=>({other,distance:Math.hypot(p.x-other.x,p.y-other.y)}))
+    .filter(candidate=>candidate.distance<=31).sort((a,b)=>a.distance-b.distance)[0]?.other||null;
+}
 function nearestWaitingFamily(){return family.filter(p=>!p.aboard&&p.pickup).map(p=>({p,distance:Math.hypot(car.x-p.pickup.x,car.y-p.pickup.y)})).sort((a,b)=>a.distance-b.distance)[0]}
 function waitingFamilyNearCar(){const nearest=nearestWaitingFamily();return nearest&&nearest.distance<82?nearest.p:null}
 function standingSpotForSeat(index){
@@ -95,16 +100,32 @@ function standingSpotForSeat(index){
 function interactionUnavailable(){
   const p=family[selected];if(mode==='driving'||p.passenger||p.seated)return false;
   if(p.x>12&&p.y<-35)return family.some(other=>other!==p&&other.passenger);
-  const target=nearestWorkstation(p);return !!(target&&workstationOccupant(target.index,p));
+  const target=nearestWorkstation(p);return !!(target&&workstationOccupant(target.index,p)&&!touchingFamilyMember(p));
 }
 function interactionLabel(){
   const p=family[selected];
   if(mode==='driving'){const waiting=waitingFamilyNearCar();return waiting?'Zabierz '+(waiting.pickupName||waiting.name):'Wróć do wnętrza'}if(p.passenger)return'Wstań z fotela';if(p.seated)return'Wstań';
   if(p.x>12&&p.y<-35)return family.some(other=>other!==p&&other.passenger)?'Fotel zajęty':'Usiądź przy radiu';
   if(p.y<-42&&p.x<=12)return'Przejmij kierownicę';
-  const target=nearestWorkstation(p);return target?(workstationOccupant(target.index,p)?'Miejsce zajęte':'Usiądź'):'Interakcja';
+  const target=nearestWorkstation(p),occupant=target&&workstationOccupant(target.index,p);if(target&&!occupant)return'Usiądź';
+  if(touchingFamilyMember(p))return'Przytul';
+  return target?'Miejsce zajęte':'Interakcja';
 }
 function selectPerson(i){if(!family[i]?.aboard)return;if(mode==='driving'){toast(touchHint('Najpierw dotknij „Wróć do wnętrza”.','Najpierw wróć do wnętrza klawiszem E.'));return}window.resetTouchControls?.();selected=i;buildFamily();toast(family[i].name+touchHint(' · Dotknij „Wstań”, potem użyj joysticka.',' · E — wstań / usiądź, WASD — spacer'))}
+function familyMemberAtCabinPoint(x,y){
+  return family.map((p,i)=>({p,i,distance:Math.hypot(x-p.x,y-(p.y-3))}))
+    .filter(({p})=>p.aboard&&Math.abs(x-p.x)<=12&&y>=p.y-21&&y<=p.y+15)
+    .sort((a,b)=>a.distance-b.distance)[0]?.i??-1;
+}
+function selectPersonFromCanvas(event){
+  if(mode!=='interior')return;
+  const box=canvas.getBoundingClientRect(),screenX=(event.clientX-box.left)*canvas.width/box.width,screenY=(event.clientY-box.top)*canvas.height/box.height;
+  const scale=zoom*(1-roof*.82);if(scale<=0)return;
+  const rotatedX=(screenX-320)/scale,rotatedY=(screenY-210)/scale,cos=Math.cos(car.angle),sin=Math.sin(car.angle);
+  const index=familyMemberAtCabinPoint(rotatedX*cos+rotatedY*sin,-rotatedX*sin+rotatedY*cos);
+  if(index>=0&&index!==selected)selectPerson(index);
+}
+canvas.addEventListener('click',selectPersonFromCanvas);
 function togglePause(){paused=!paused;keys.clear();window.resetTouchControls?.();$('pause-overlay').hidden=!paused;$('pause').innerHTML=paused?'▶ <span>Wznów</span>':'Ⅱ <span>Pauza</span>';window.updateTouchControls?.()}
 $('pause').onclick=togglePause;
 function interact(){
@@ -123,8 +144,11 @@ function interact(){
     p.passenger=true;p.seated=true;p.station=null;p.x=36;p.y=-44;buildFamily();toast(touchHint('Radio: dotknij przycisku ♫.','Radio: R — włącz / wyłącz · [ / ] — zmień utwór · E — wstań'));return;
   }
   if(p.y<-42&&p.x<=12){mode='driving';taken=true;buildFamily();toast(p.name+touchHint(' prowadzi · ↑ gaz · ↓ hamulec · ← → skręt',' prowadzi · W/S — gaz i hamulec · A/D — skręt · E — wnętrze'));return}
-  const target=nearestWorkstation(p);
-  if(target){const occupant=workstationOccupant(target.index,p);if(occupant){toast('To miejsce zajmuje '+occupant.name+'.');return}p.seated=true;p.station=target.index;p.x=target.seat.x;p.y=target.seat.y;buildFamily();toast(p.name+' siada przy '+target.seat.label+'.');return}
+  const target=nearestWorkstation(p),occupant=target&&workstationOccupant(target.index,p);
+  if(target&&!occupant){p.seated=true;p.station=target.index;p.x=target.seat.x;p.y=target.seat.y;buildFamily();toast(p.name+' siada przy '+target.seat.label+'.');return}
+  const closePerson=touchingFamilyMember(p);
+  if(closePerson){bond++;heartParticles.push({x:(p.x+closePerson.x)/2,y:(p.y+closePerson.y)/2-13,age:0,life:1.15,drift:(Math.random()-.5)*3});toast(p.name+' i '+closePerson.name+' przytulają się ♥');return}
+  if(occupant){toast('To miejsce zajmuje '+occupant.name+'.');return}
   toast('Podejdź do kierowcy lub do swojego stanowiska.');
 }
 window.addEventListener('keydown',e=>{if(e.target instanceof HTMLInputElement)return;const k=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright',' ','e','p','1','2','3','4','5'].includes(k))e.preventDefault();if(!e.repeat){if(k==='e')interact();if(k==='p')togglePause();if(['1','2','3','4','5'].includes(k))selectPerson(+k-1)}keys.add(k)});
@@ -185,6 +209,7 @@ function interior(){
   const p=family[selected];if(p.seated){rect(p.x-9,p.y+14,18,2,'#d8ee9b')}
   if(!p.seated&&p.y<-35){const px=p.x>12?30:0;rect(px-7,-82,14,10,'#243b2f');ctx.fillStyle='#e3f0b1';ctx.font='9px monospace';ctx.fillText('E',px-3,-74)}
   drawCoinParticles();
+  drawHeartParticles();
   ctx.globalAlpha=roof;vehicle(0,0,0,'#e0d1a4',true);ctx.globalAlpha=1;
   ctx.restore();
 }
@@ -199,9 +224,14 @@ function updateEconomy(dt){
   });
   for(let i=coinParticles.length-1;i>=0;i--){const coin=coinParticles[i];coin.age+=dt;coin.y-=13*dt;coin.x+=coin.drift*dt;if(coin.age>=coin.life)coinParticles.splice(i,1)}
   const shown=Math.floor(money);if(shown!==lastMoneyShown){$('money-value').textContent=shown.toLocaleString('pl-PL');lastMoneyShown=shown}
+  for(let i=heartParticles.length-1;i>=0;i--){const heart=heartParticles[i];heart.age+=dt;heart.y-=11*dt;heart.x+=heart.drift*dt;if(heart.age>=heart.life)heartParticles.splice(i,1)}
+  if(bond!==lastBondShown){$('bond-value').textContent=bond.toLocaleString('pl-PL');lastBondShown=bond}
 }
 function drawCoinParticles(){
   coinParticles.forEach(coin=>{const alpha=Math.max(0,1-coin.age/coin.life);ctx.globalAlpha=alpha;const pulse=coin.age<.12?1+coin.age*4:1;ctx.fillStyle='#9d7927';ctx.beginPath();ctx.arc(coin.x,coin.y,4*pulse,0,Math.PI*2);ctx.fill();ctx.fillStyle='#f4dc76';ctx.beginPath();ctx.arc(coin.x,coin.y-1,2.7*pulse,0,Math.PI*2);ctx.fill();ctx.fillStyle='#7a5b1d';ctx.font='bold 5px monospace';ctx.textAlign='center';ctx.fillText('$',coin.x,coin.y+1.5);ctx.textAlign='start';ctx.globalAlpha=1})
+}
+function drawHeartParticles(){
+  heartParticles.forEach(heart=>{const alpha=Math.max(0,1-heart.age/heart.life),pulse=heart.age<.16?.8+heart.age*2.5:1;ctx.save();ctx.globalAlpha=alpha;ctx.translate(Math.round(heart.x),Math.round(heart.y));ctx.scale(pulse,pulse);rect(-5,-3,4,4,'#f29aad');rect(1,-3,4,4,'#f29aad');rect(-6,-1,12,4,'#f29aad');rect(-4,3,8,2,'#f29aad');rect(-2,5,4,2,'#f29aad');ctx.restore()})
 }
 function update(dt){
   window.updateTouchControls?.();
