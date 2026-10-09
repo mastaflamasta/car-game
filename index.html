@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Rodzina w drodze — pixel road trip</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <header><a class="brand" href="./"><span class="brand-icon">▦</span> ROAD<span class="brand-light">FAMILY</span></a><span class="edition">MAŁY DOM. WIELKA DROGA.</span><div class="header-actions"><button class="sound" id="audio-toggle" aria-pressed="true">♪ Dźwięk: wł.</button><label class="volume-control" title="Głośność"><input id="audio-volume" type="range" min="0" max="100" step="1" value="80" aria-label="Głośność dźwięków"><output id="volume-value" for="audio-volume">80%</output></label><button class="sound" id="pause">Ⅱ <span>Pauza</span></button></div></header>
+    <section class="heading"><div><div class="eyebrow"><span></span> PIKSELOWA PODRÓŻ RODZINNA</div><h1>Rodzina w drodze<span>.</span></h1><p>Trzy stanowiska. Cztery osoby. Jeden wspólny kierunek.</p></div><div class="trip"><span>TRASA 001</span><strong>Miasto → gdziekolwiek</strong><small>Bez pośpiechu. Po swojemu.</small></div></section>
+    <section class="game-layout">
+      <div class="game-panel"><div class="game-top"><span><i class="live"></i> <b id="view-label">WNĘTRZE SAMOCHODU</b></span><span id="top-location">DZIELNICA OGRODOWA · 08:42</span></div><div class="canvas-wrap"><canvas id="game" width="640" height="420" aria-label="Gra pikselowa: rodzina w samochodzie" tabindex="0"></canvas><div id="toast" class="toast">Wybierz osobę i wyrusz w drogę.</div><div id="pause-overlay" hidden>Podróż zatrzymana<span>Naciśnij P, żeby wrócić</span></div></div><div class="game-bottom"><span><i class="dot"></i><span id="status">Kierowca prowadzi. Rodzina pracuje.</span></span><span><b id="speed">32</b> km/h <span class="divider">/</span> <b id="distance">0.0</b> km</span></div></div>
+      <aside><div class="aside-title"><span>NA POKŁADZIE</span><span>04</span></div><p class="aside-intro">Wybierz, czyją historię prowadzisz.</p><div id="family"></div><div class="driver-card"><span class="driver-icon">◉</span><div><strong id="driver-name">Kierowca</strong><small id="driver-status">Za kierownicą · autopilot</small></div><span class="small-dot"></span></div><div class="mission"><span class="eyebrow">MAŁY PLAN NA DROGĘ</span><h3>Zmień perspektywę</h3><p>Wstań od komputera i podejdź do kierowcy. Przejmij kierownicę, żeby odkrywać miasto.</p><div><span id="step-one">01 Wstań od stanowiska</span><span id="step-two">02 Podejdź do kierowcy</span><span id="step-three">03 Ruszaj w miasto</span></div></div></aside>
+    </section>
+    <section class="controls"><div class="control-title"><span>JAK GRAĆ</span><small id="control-mode">W środku jest całkiem przytulnie.</small></div><div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span id="move-label">Poruszanie</span></div><div><kbd>E</kbd><span>Interakcja / kierownica</span></div><div><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><span>Wybór osoby</span></div><div><kbd>P</kbd><span>Pauza</span></div></section>
+    <footer><span>Zbudowane z pikseli i rodzinnych historii.</span><span>PROTOTYP 01 <i>✦</i> W DRODZE OD ZAWSZE</span></footer>
+  </main><script src="audio.js"></script><script src="game.js"></script>
+</body></html>
