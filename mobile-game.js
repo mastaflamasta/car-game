@@ -1,5 +1,5 @@
 (() => {
-  if (!window.matchMedia('(max-width:820px), (pointer:coarse)').matches) return;
+  if (!window.matchMedia('(max-width:820px)').matches) return;
   const panel = document.querySelector('.game-panel');
   const stage = panel?.querySelector('.canvas-wrap');
   const family = document.getElementById('family');

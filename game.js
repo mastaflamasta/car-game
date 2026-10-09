@@ -10,11 +10,11 @@ const seatInteractionZones=[
 ];
 const driverInteractionZone={left:-50,right:-8,top:-61,bottom:-34},passengerInteractionZone={left:14,right:54,top:-58,bottom:-30},exitDoorInteractionZone={left:-16,right:16,top:73,bottom:91};
 const family=[
-  {name:'Mama',pickupName:'Mamę',role:'Projektuje przy komputerze',color:'#d88860',hair:'#9a5239',hairStyle:'bob',glasses:true,x:-39,y:14,station:0,seated:true,aboard:true},
-  {name:'Tata',pickupName:'Tatę',role:'Pracuje przy komputerze',color:'#679b91',hair:'#423c36',hairStyle:'short',x:39,y:14,station:1,seated:true,aboard:true},
-  {name:'Nela',pickupName:'Nelę',role:'Tworzy na laptopie',color:'#c4ad66',hair:'#b97838',hairStyle:'long',x:-38,y:69,station:2,seated:true,aboard:true},
-  {name:'Tosia',pickupName:'Tosię',role:'Czeka na rodzinę',color:'#c98b75',hair:'#b34e2e',hairStyle:'bob',glasses:true,x:0,y:0,station:null,seated:false,aboard:false,pickup:{x:410,y:-50}},
-  {name:'Łucja',pickupName:'Łucję',role:'Czeka na rodzinę',color:'#8aa5b2',hair:'#51352e',hairStyle:'short',glasses:true,x:0,y:0,station:null,seated:false,aboard:false,pickup:{x:760,y:-230}}
+  {name:'Mama',pickupName:'Mamę',role:'Projektuje przy komputerze',color:'#d88860',hair:'#9a5239',hairStyle:'bob',glasses:true,x:-39,y:14,station:0,seated:true,aboard:true,closeness:0},
+  {name:'Tata',pickupName:'Tatę',role:'Pracuje przy komputerze',color:'#679b91',hair:'#423c36',hairStyle:'short',x:39,y:14,station:1,seated:true,aboard:true,closeness:0},
+  {name:'Nela',pickupName:'Nelę',role:'Tworzy na laptopie',color:'#c4ad66',hair:'#b97838',hairStyle:'long',x:-38,y:69,station:2,seated:true,aboard:true,closeness:0},
+  {name:'Tosia',pickupName:'Tosię',role:'Czeka na rodzinę',color:'#c98b75',hair:'#b34e2e',hairStyle:'bob',glasses:true,x:0,y:0,station:null,seated:false,aboard:false,pickup:{x:410,y:-50},closeness:0},
+  {name:'Łucja',pickupName:'Łucję',role:'Czeka na rodzinę',color:'#8aa5b2',hair:'#51352e',hairStyle:'short',glasses:true,x:0,y:0,station:null,seated:false,aboard:false,pickup:{x:760,y:-230},closeness:0}
 ];
 // Each crop is measured relative to its original photograph.
 const familyPhotos=[
@@ -51,7 +51,7 @@ const coinParticles=[],heartParticles=[];
 const car={x:350,y:650,angle:0,speed:32,autoX:350};
 const keys=new Set();
 const touchKeys=new Set();
-const touchHint=(mobile,keyboard)=>window.matchMedia('(max-width:740px), (any-pointer:coarse)').matches?mobile:keyboard;
+const touchHint=(mobile,keyboard)=>window.matchMedia('(max-width:820px)').matches?mobile:keyboard;
 const rect=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),w,h)};
 const characterArt=p=>characterStyle==='pixel'&&p.pixel?p.pixel:p.face;
 const characterPortraitArt=p=>characterStyle==='pixel'&&p.pixel?p.pixel:p.face;
@@ -100,6 +100,10 @@ function touchingFamilyMember(p){
   return family.filter(other=>other!==p&&other.aboard)
     .map(other=>({other,distance:Math.hypot(p.x-other.x,p.y-other.y)}))
     .filter(candidate=>candidate.distance<=31).sort((a,b)=>a.distance-b.distance)[0]?.other||null;
+}
+function hugFamily(p,other){
+  bond++;other.closeness=Math.min(100,(other.closeness||0)+20);
+  heartParticles.push({x:(p.x+other.x)/2,y:(p.y+other.y)/2-13,age:0,life:1.15,drift:(Math.random()-.5)*3});toast(p.name+' i '+other.name+' przytulają się ♥');
 }
 function nearestWaitingFamily(){return family.filter(p=>!p.aboard&&p.pickup).map(p=>({p,distance:Math.hypot(car.x-p.pickup.x,car.y-p.pickup.y)})).sort((a,b)=>a.distance-b.distance)[0]}
 function waitingFamilyNearCar(){const nearest=nearestWaitingFamily();return nearest&&nearest.distance<82?nearest.p:null}
@@ -161,14 +165,14 @@ function interact(){
   }
   if(atPassengerPlace(p)){
     const occupant=passengerOccupant(p);
-    if(occupant){const closePerson=touchingFamilyMember(p);if(closePerson){bond++;heartParticles.push({x:(p.x+closePerson.x)/2,y:(p.y+closePerson.y)/2-13,age:0,life:1.15,drift:(Math.random()-.5)*3});toast(p.name+' i '+closePerson.name+' przytulają się ♥');return}toast('Fotel pasażera jest zajęty.');return}
+    if(occupant){const closePerson=touchingFamilyMember(p);if(closePerson){hugFamily(p,closePerson);return}toast('Fotel pasażera jest zajęty.');return}
     p.passenger=true;p.seated=true;p.station=null;p.x=36;p.y=-44;buildFamily();toast(touchHint('Radio: dotknij przycisku ♫.','Radio: R — włącz / wyłącz · [ / ] — zmień utwór · E — wstań'));return;
   }
   if(atDriverPlace(p)){mode='driving';taken=true;buildFamily();toast(p.name+touchHint(' prowadzi · ↑ gaz · ↓ hamulec · ← → skręt',' prowadzi · W/S — gaz i hamulec · A/D — skręt · E — wnętrze'));return}
   const target=nearestWorkstation(p),occupant=target&&workstationOccupant(target.index,p);
   if(target&&!occupant){p.seated=true;p.station=target.index;p.x=target.seat.x;p.y=target.seat.y;buildFamily();toast(p.name+' siada przy '+target.seat.label+'.');return}
   const closePerson=touchingFamilyMember(p);
-  if(closePerson){bond++;heartParticles.push({x:(p.x+closePerson.x)/2,y:(p.y+closePerson.y)/2-13,age:0,life:1.15,drift:(Math.random()-.5)*3});toast(p.name+' i '+closePerson.name+' przytulają się ♥');return}
+  if(closePerson){hugFamily(p,closePerson);return}
   if(occupant){toast('To miejsce zajmuje '+occupant.name+'.');return}
   toast('Podejdź do kierowcy lub do swojego stanowiska.');
 }
@@ -228,8 +232,9 @@ function interior(){
   seatedFamilyInDrawOrder().forEach(p=>person(p,p.x,p.y));
   // Family carpet and loose laptop cable.
   rect(-14,31,29,47,'#8b7458');rect(-12,33,25,43,'#b99b70');for(let y=35;y<74;y+=6)rect(-10,y,21,2,'#cbb389');
-  family.forEach((p,i)=>{if(p.aboard&&!p.seated){if(i===selected){rect(p.x-9,p.y+12,18,2,'#d8ee9b')}person(p,p.x,p.y,0,i===selected&&down('w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'))}});
-  const p=family[selected];if(p.seated){rect(p.x-9,p.y+14,18,2,'#d8ee9b')}
+  family.forEach((p,i)=>{if(p.aboard&&!p.seated)person(p,p.x,p.y,0,i===selected&&down('w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'))});
+  family.filter(member=>member.aboard).forEach(member=>{const barX=member.x-9,barY=member.y-20;rect(barX,barY,18,3,'#513845');const pinkWidth=Math.round(18*(member.closeness||0)/100);if(pinkWidth>0)rect(barX,barY,pinkWidth,3,'#f29aad')});
+  const p=family[selected];if(p.aboard)rect(p.x-9,p.y-23,18,2,'#d8ee9b');
   if(!p.seated&&atExitDoor(p)){rect(-7,81,14,10,'#243b2f');ctx.fillStyle='#e3f0b1';ctx.font='9px monospace';ctx.fillText('E',-3,89)}
   else if(!p.seated&&(atPassengerPlace(p)||atDriverPlace(p))){const px=atPassengerPlace(p)?30:-28;rect(px-7,-82,14,10,'#243b2f');ctx.fillStyle='#e3f0b1';ctx.font='9px monospace';ctx.fillText('E',px-3,-74)}
   drawCoinParticles();
@@ -240,12 +245,14 @@ function interior(){
 function canWalk(x,y){if(x<-48||x>48||y<-54||y>89)return false;const obstacles=[[-56,-21,-23,10],[23,-21,56,10],[-56,35,-23,65],[27,52,56,90]];return !obstacles.some(([a,b,c,d])=>x>a-5&&x<c+5&&y>b-8&&y<d+8)}
 function seatedFamilyInDrawOrder(){return family.filter(p=>p.aboard&&p.seated).sort((a,b)=>a.y-b.y)}
 function activeWorkers(){return family.filter(p=>p.aboard&&p.seated&&!p.passenger&&Number.isInteger(p.station)&&p.station<workstations.length)}
+function workMultiplier(p){return .5+Math.max(0,Math.min(100,p.closeness||0))/100}
+function updateCloseness(dt){family.forEach(p=>p.closeness=Math.max(0,(p.closeness||0)-dt*.5))}
 function updateEconomy(dt){
-  const workers=activeWorkers();money+=workers.length*2*dt;
+  const workers=activeWorkers();money+=workers.reduce((sum,p)=>sum+2*workMultiplier(p),0)*dt;
   family.forEach(p=>{
     if(!workers.includes(p)){p.coinTimer=.2;return}
     p.coinTimer=(p.coinTimer??.15)-dt;
-    if(p.coinTimer<=0){const seat=cabinSeats[p.station];coinParticles.push({x:seat.x+(Math.random()-.5)*8,y:seat.y-18,age:0,life:.85,drift:(Math.random()-.5)*7});p.coinTimer=.48+Math.random()*.25}
+    if(p.coinTimer<=0){const seat=cabinSeats[p.station];coinParticles.push({x:seat.x+(Math.random()-.5)*8,y:seat.y-18,age:0,life:.85,drift:(Math.random()-.5)*7});p.coinTimer=(.48+Math.random()*.25)/workMultiplier(p)}
   });
   for(let i=coinParticles.length-1;i>=0;i--){const coin=coinParticles[i];coin.age+=dt;coin.y-=13*dt;coin.x+=coin.drift*dt;if(coin.age>=coin.life)coinParticles.splice(i,1)}
   const shown=Math.floor(money);if(shown!==lastMoneyShown){$('money-value').textContent=shown.toLocaleString('pl-PL');lastMoneyShown=shown}
@@ -261,7 +268,7 @@ function drawHeartParticles(){
 function update(dt){
   window.updateTouchControls?.();
   window.updateRadioControls?.();
-  if(paused)return;time+=dt;toastTimer-=dt;updateEconomy(dt);
+  if(paused)return;time+=dt;toastTimer-=dt;updateEconomy(dt);updateCloseness(dt);
   const p=family[selected];if(mode==='interior'){
     // Autopilot follows the northbound avenue while everyone works.
     car.angle+=(0-car.angle)*Math.min(1,dt*4);car.x+=(car.autoX-car.x)*Math.min(1,dt*2);car.y-=23*dt;car.speed=32;

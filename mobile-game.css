@@ -1,5 +1,5 @@
 /* Phone mode: the game is the application, not a card inside a web page. */
-@media (max-width: 820px), (pointer: coarse) {
+@media (max-width: 820px) {
   html.mobile-game-active, html.mobile-game-active body { width:100%; height:var(--mobile-height,100dvh); margin:0; overflow:hidden; overscroll-behavior:none; background:#08120d; }
   html.mobile-game-active body { position:fixed; inset:0; }
   html.mobile-game-active .app > header, html.mobile-game-active .heading, html.mobile-game-active aside, html.mobile-game-active .controls, html.mobile-game-active footer { display:none!important; }
