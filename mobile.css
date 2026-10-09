@@ -1,0 +1,157 @@
+/* Mobile fullscreen shell and touch-friendly HUD overrides. */
+:root {
+  --mobile-safe-top: env(safe-area-inset-top, 0px);
+  --mobile-safe-right: env(safe-area-inset-right, 0px);
+  --mobile-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --mobile-safe-left: env(safe-area-inset-left, 0px);
+  color-scheme: dark;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: var(--app-height, 100dvh);
+}
+
+#root,
+#app,
+.app,
+.game,
+.game-container,
+.game-wrapper,
+main {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+canvas,
+.game-canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: contain;
+  touch-action: none;
+}
+
+button,
+input,
+select,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+@media (max-width: 820px), (pointer: coarse) {
+  body {
+    position: fixed;
+    inset: 0;
+  }
+
+  .controls,
+  .game-controls,
+  .hud,
+  .settings,
+  .control-panel {
+    position: fixed;
+    z-index: 20;
+    margin: 0;
+  }
+
+  .controls,
+  .game-controls,
+  .hud {
+    inset: auto var(--mobile-safe-right) var(--mobile-safe-bottom)
+      var(--mobile-safe-left);
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px;
+    pointer-events: none;
+  }
+
+  .controls > *,
+  .game-controls > *,
+  .hud > * {
+    pointer-events: auto;
+  }
+
+  .settings,
+  .control-panel {
+    top: calc(var(--mobile-safe-top) + 8px);
+    right: calc(var(--mobile-safe-right) + 8px);
+    max-width: min(88vw, 320px);
+    max-height: calc(100dvh - var(--mobile-safe-top) - var(--mobile-safe-bottom) - 16px);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  input[type="range"] {
+    min-height: 44px;
+    max-width: 42vw;
+  }
+
+  label,
+  .toggle,
+  .switch {
+    font-size: clamp(12px, 3.4vw, 16px);
+  }
+
+  button,
+  .button,
+  [role="button"],
+  input[type="checkbox"] + label {
+    min-width: 48px;
+    min-height: 48px;
+  }
+}
+
+@media (max-width: 820px) and (orientation: portrait) {
+  .controls,
+  .game-controls,
+  .hud {
+    padding-bottom: max(12px, var(--mobile-safe-bottom));
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .controls,
+  .game-controls,
+  .hud {
+    padding: 8px max(10px, var(--mobile-safe-right))
+      max(8px, var(--mobile-safe-bottom)) max(10px, var(--mobile-safe-left));
+  }
+
+  button,
+  .button,
+  [role="button"] {
+    min-height: 42px;
+  }
+
+  .settings,
+  .control-panel {
+    font-size: 12px;
+  }
+}
+
+@media (display-mode: standalone) {
+  html,
+  body {
+    background: #05070a;
+  }
+}
