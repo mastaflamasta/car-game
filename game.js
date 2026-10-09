@@ -217,7 +217,19 @@ function world(){
   }
   family.forEach(p=>{if(p.aboard||!p.pickup)return;const {x,y}=p.pickup;ctx.save();ctx.globalAlpha=.28;ctx.fillStyle='#d1e997';ctx.beginPath();ctx.arc(x,y,24+Math.sin(time*3)*3,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;person(p,x,y);ctx.fillStyle='#101816';ctx.fillRect(x-24,y-31,48,11);ctx.fillStyle='#edf0cf';ctx.font='8px monospace';ctx.textAlign='center';ctx.fillText(p.name.toUpperCase(),x,y-23);ctx.textAlign='start';ctx.restore()})
 }
-function vehicle(x,y,a,color,large){ctx.save();ctx.translate(Math.round(x),Math.round(y));ctx.rotate(a);const w=large?136:18,h=large?216:34;rect(-w/2+3,-h/2+4,w,h,'#34493c');rect(-w/2,-h/2,w,h,color);rect(-w/2+3,-h/2+3,w-6,h-6,color);rect(-w/2+4,-h/2+6,w-8,large?18:8,'#436366');rect(-w/2+4,h/2-12,w-8,7,'#526b63');rect(-w/2-2,-h/2+8,3,9,'#29372e');rect(w/2-1,-h/2+8,3,9,'#29372e');rect(-w/2-2,h/2-14,3,9,'#29372e');rect(w/2-1,h/2-14,3,9,'#29372e');rect(-w/2+3,-h/2,5,3,'#f5dc9c');rect(w/2-8,-h/2,5,3,'#f5dc9c');if(large){rect(-20,-25,40,65,'#c6c5a3');rect(-16,-21,32,3,'#dcd9b5');rect(-12,-4,24,28,'#a8b39b');rect(-8,0,16,20,'#bec7a6')}ctx.restore()}
+function vehicle(x,y,a,color,large){ctx.save();ctx.translate(Math.round(x),Math.round(y));ctx.rotate(a);const w=large?136:18,h=large?216:34;rect(-w/2+3,-h/2+4,w,h,'#34493c');rect(-w/2,-h/2,w,h,color);rect(-w/2+3,-h/2+3,w-6,h-6,color);rect(-w/2+4,-h/2+6,w-8,large?18:8,'#436366');rect(-w/2+4,h/2-12,w-8,7,'#526b63');rect(-w/2-2,-h/2+8,3,9,'#29372e');rect(w/2-1,-h/2+8,3,9,'#29372e');rect(-w/2-2,h/2-14,3,9,'#29372e');rect(w/2-1,h/2-14,3,9,'#29372e');if(large){rect(-55,-135,110,31,'#34493c');rect(-52,-132,104,27,color);rect(-47,-129,94,20,'#d1c093');rect(-44,-126,88,3,'#e3d5aa');rect(-2,-126,4,17,'#b5a77f');rect(-36,-132,15,5,'#f5dc9c');rect(21,-132,15,5,'#f5dc9c');rect(-46,-136,92,4,'#526357');rect(-20,-25,40,65,'#c6c5a3');rect(-16,-21,32,3,'#dcd9b5');rect(-12,-4,24,28,'#a8b39b');rect(-8,0,16,20,'#bec7a6')}else{rect(-w/2+3,-h/2,5,3,'#f5dc9c');rect(w/2-8,-h/2,5,3,'#f5dc9c')}ctx.restore()}
+function hitsVehicle(px,py,x,y,angle){const dx=px-x,dy=py-y,cos=Math.cos(angle),sin=Math.sin(angle),localX=dx*cos+dy*sin,localY=-dx*sin+dy*cos;return Math.abs(localX)<20&&Math.abs(localY)<28}
+function worldObstacleAt(px,py){
+  const baseI=Math.floor(px/350),baseJ=Math.floor(py/350);
+  for(let i=baseI-1;i<=baseI+1;i++)for(let j=baseJ-1;j<=baseJ+1;j++){
+    const x=i*350,y=j*350;
+    if(px>x+69&&px<x+265&&py>y+63&&py<y+249)return'building';
+    for(const [treeX,treeY] of [[x+66,y+250],[x+265,y+84],[x+247,y+261]])if(Math.hypot(px-treeX,py-treeY)<25)return'tree';
+    if(hitsVehicle(px,py,x+34,y+146,0)||hitsVehicle(px,py,x+168,y-30,Math.PI/2))return'vehicle';
+    const trafficY=y+80+((time*24+hash(i,j)*220)%230);if(hitsVehicle(px,py,x-24,trafficY,Math.PI))return'vehicle';
+  }
+  return null;
+}
 function desk(x,y,laptop){rect(x-17,y-13,34,25,'#453f36');rect(x-17,y-15,34,24,'#b49970');rect(x-16,y-14,32,2,'#d6be8d');rect(x-11,y-11,22,14,'#303f3b');rect(x-9,y-9,18,10,'#87b8a4');rect(x-7,y-7,9,1,'#dbedbc');rect(x-7,y-4,13,1,'#bdd7a0');rect(x-9,y+4,19,4,laptop?'#758b7a':'#5c6c61');rect(x+13,y-8,3,6,'#ede0b4')}
 function interior(){
   ctx.save();ctx.translate(car.x,car.y);ctx.rotate(car.angle);
@@ -289,8 +301,8 @@ function update(dt){
     const gas=down('w','arrowup'),brake=down('s','arrowdown',' ');car.speed+=(brake?-85:gas?48:-10)*dt;car.speed=Math.max(-22,Math.min(100,car.speed));if(Math.abs(car.speed)<.5)car.speed=0;
     car.angle+=((down('d','arrowright')?1:0)-(down('a','arrowleft')?1:0))*dt*1.9*(car.speed/70);
     const nx=car.x+Math.sin(car.angle)*car.speed*dt*.95,ny=car.y-Math.cos(car.angle)*car.speed*dt*.95;
-    const bx=((nx%350)+350)%350,by=((ny%350)+350)%350;
-    if(bx>62&&bx<288&&by>62&&by<288){car.speed=-car.speed*.22;toast('Ostrożnie! Budynki nie ustąpią pierwszeństwa.')}else{car.x=nx;car.y=ny}
+    const obstacle=worldObstacleAt(nx,ny);
+    if(obstacle){car.speed=-car.speed*.22;toast(obstacle==='tree'?'Uwaga na drzewo!':obstacle==='vehicle'?'Uwaga na inne auto!':'Ostrożnie! Budynki nie ustąpią pierwszeństwa.')}else{car.x=nx;car.y=ny}
   }
   distance+=Math.abs(car.speed)*dt/3600;zoom+=((mode==='interior'?1.77:.88)-zoom)*Math.min(1,dt*3);roof+=((mode==='driving'?1:0)-roof)*Math.min(1,dt*4);
   $('speed').textContent=Math.round(Math.abs(car.speed));$('distance').textContent=distance.toFixed(1);$('view-label').textContent=mode==='interior'?'WNĘTRZE SAMOCHODU':'MIASTO · ZA KIEROWNICĄ';
