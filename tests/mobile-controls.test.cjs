@@ -83,4 +83,14 @@ run('interact()');assert.equal(run('family[0].seated'),false,'Interaction leaves
 run('family[2].seated=false;family[2].station=null;family[0].x=-38;family[0].y=82;interact()');
 assert.equal(run('family[0].seated'),true,'A person can use somebody else\'s free workstation');
 assert.equal(run('family[0].station'),2,'The newly occupied workstation is remembered');
+run("family.slice(0,3).forEach((p,i)=>{p.aboard=true;p.seated=true;p.passenger=false;p.station=i;p.x=cabinSeats[i].x;p.y=cabinSeats[i].y});family[3].aboard=false;family[3].seated=false;family[3].station=null;family[4].aboard=false;family[4].seated=false;family[4].station=null;mode='driving';selected=0;car.x=410;car.y=470");
+assert.equal(run('interactionLabel()'),'Zabierz Tosię');
+run('interact()');assert.equal(run('family[3].aboard'),true,'Tosia can be picked up from the map');
+assert.equal(run('family[3].station'),3,'The first picked-up child uses the first couch seat');
+run('car.x=290;car.y=120;interact()');assert.equal(run('family[4].aboard'),true,'Łucja can be picked up from the map');
+assert.equal(run('family[4].station'),4,'The second picked-up child uses the second couch seat');
+run("mode='interior';selected=4;interact()");assert.equal(run('family[4].seated'),false,'A person can stand up from the rear couch seat');
+assert.equal(run('canWalk(family[4].x,family[4].y)'),true,'The couch exit point is inside the walkable aisle');
+const couchExitY=run('family[4].y');run("touchKeys.add('w');update(.1);touchKeys.clear()");
+assert(run('family[4].y')<couchExitY,'A person can move immediately after leaving the couch');
 console.log('OK: movement, interaction, two fingers, brake priority, cancellation, pause, resize, visibility, selection and keyboard.');
