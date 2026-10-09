@@ -119,6 +119,16 @@ run("family[0].seated=false;family[0].passenger=false;family[0].x=17;family[0].y
 assert.equal(run('interactionUnavailable()'),false,'An occupied workstation does not block hugging its seated occupant');
 assert.equal(run('interactionLabel()'),'Przytul','A seated family member can be hugged');
 run('interact()');assert.equal(run('bond'),2,'Hugging a seated person increases the bond counter');
+run("family.forEach((p,i)=>{p.aboard=i<2;p.seated=false;p.passenger=false;p.station=null});mode='interior';selected=0;family[0].x=0;family[0].y=82");
+assert.equal(run('interactionLabel()'),'Wysiądź','The exit action appears only at the rear door');
+run('interact()');assert.equal(run('family[0].aboard'),false,'A family member can leave through the rear door');
+assert.equal(run('selected'),1,'Another person becomes active after the selected person exits');
+assert(run('family[0].pickup&&Number.isFinite(family[0].pickup.x)&&Number.isFinite(family[0].pickup.y)'),'The person waits at a valid position on the street');
+run("mode='driving';car.x=family[0].pickup.x;car.y=family[0].pickup.y;interact()");
+assert.equal(run('family[0].aboard'),true,'A person who left the vehicle can be picked up again');
+run("family.forEach((p,i)=>{p.aboard=i===1});mode='interior';selected=1;family[1].seated=false;family[1].x=0;family[1].y=82");
+assert.equal(run('interactionUnavailable()'),true,'The last person cannot use the exit');
+run('interact()');assert.equal(run('family[1].aboard'),true,'The last person remains in the vehicle');
 run("family[0].face={kind:'photo'};family[0].pixel={kind:'pixel'};setCharacterStyle('pixel')");
 assert.equal(run("characterArt(family[0]).kind"),'pixel','Pixel-art mode selects the transparent pixel asset');
 run("setCharacterStyle('photo')");assert.equal(run("characterArt(family[0]).kind"),'photo','Photo mode restores the photographic asset');
