@@ -2,7 +2,14 @@
 
 // All sounds are generated locally; no audio files or downloads are needed.
 const gameAudio=(()=>{
-  let context,master,engine,engineGain,streetGain,noiseBuffer;
+  let context,master,engine,engineGain,streetGain,noiseBuffer,musicGain;
+  const tracks=[
+    {name:'Poranna trasa',bpm:104,type:'triangle',melody:[72,76,79,76,74,77,81,77,76,79,83,79,74,77,79,71],bass:[48,53,55,55]},
+    {name:'Słoneczne kilometry',bpm:128,type:'square',melody:[69,0,72,76,74,72,69,67,65,69,72,69,67,71,74,76],bass:[45,41,48,43]},
+    {name:'Noc za oknem',bpm:76,type:'sine',melody:[76,0,79,83,81,0,79,76,74,0,77,81,79,0,74,71],bass:[40,45,41,47]}
+  ];
+  let radioOn=false,trackIndex=0,musicStep=0,nextMusicTime=0,musicActive=false;
+  const musicVoices=new Set();
   let muted=false,typingIn=0,lastMode='interior',lastSeats=[true,true,true];
   const button=document.getElementById('audio-toggle');
   const slider=document.getElementById('audio-volume');
@@ -29,6 +36,7 @@ const gameAudio=(()=>{
         limiter.threshold.value=-6;limiter.knee.value=3;limiter.ratio.value=12;
         limiter.attack.value=.003;limiter.release.value=.12;
         master.connect(limiter);limiter.connect(context.destination);
+        musicGain=context.createGain();musicGain.gain.value=.28;musicGain.connect(master);
         noiseBuffer=context.createBuffer(1,context.sampleRate*2,context.sampleRate);
         const data=noiseBuffer.getChannelData(0);
         for(let i=0;i<data.length;i++)data[i]=Math.random()*2-1;
@@ -61,6 +69,41 @@ const gameAudio=(()=>{
     source.connect(filter);filter.connect(gain);gain.connect(master);source.start(t,Math.random(),.04);
     source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect()};
   }
+  function stopMusic(){
+    if(context)for(const voice of musicVoices){
+      voice.gain.gain.cancelScheduledValues(context.currentTime);
+      voice.gain.gain.setTargetAtTime(0,context.currentTime,.008);
+      voice.osc.stop(context.currentTime+.04);
+    }
+    musicVoices.clear();musicActive=false;
+  }
+  function musicNote(note,t,duration,type,level){
+    if(!note)return;
+    const osc=context.createOscillator(),gain=context.createGain(),voice={osc,gain};
+    osc.type=type;osc.frequency.value=440*Math.pow(2,(note-69)/12);
+    gain.gain.setValueAtTime(0,t);gain.gain.linearRampToValueAtTime(level,t+.015);
+    gain.gain.exponentialRampToValueAtTime(.001,t+duration);
+    osc.connect(gain);gain.connect(musicGain);musicVoices.add(voice);
+    osc.onended=()=>{osc.disconnect();gain.disconnect();musicVoices.delete(voice)};
+    osc.start(t);osc.stop(t+duration+.02);
+  }
+  function updateMusic(active){
+    if(!active||!radioOn){if(musicActive)stopMusic();return}
+    const track=tracks[trackIndex],stepDuration=60/track.bpm/2;
+    if(!musicActive){nextMusicTime=context.currentTime+.025;musicActive=true}
+    // Schedule a short horizon on the audio clock, independent of frame rate.
+    if(nextMusicTime<context.currentTime)nextMusicTime=context.currentTime+.025;
+    while(nextMusicTime<context.currentTime+.12){
+      const step=musicStep%16,bass=track.bass[Math.floor(step/4)];
+      musicNote(track.melody[step],nextMusicTime,stepDuration*.85,track.type,track.type==='square'?.045:.11);
+      if(step%2===0)musicNote(bass,nextMusicTime,stepDuration*1.6,'triangle',.16);
+      if(step%4===0){musicNote(bass+12,nextMusicTime,stepDuration*3,'sine',.055);musicNote(bass+19,nextMusicTime,stepDuration*3,'sine',.035)}
+      musicStep++;nextMusicTime+=stepDuration;
+    }
+  }
+  function toggleRadio(){radioOn=!radioOn;stopMusic();if(radioOn){musicStep=0;start()}return radioOn}
+  function changeTrack(direction){trackIndex=(trackIndex+direction+tracks.length)%tracks.length;musicStep=0;stopMusic();if(radioOn)start()}
+  function radioState(){return {on:radioOn,index:trackIndex,count:tracks.length,name:tracks[trackIndex].name,muted,available:!!(window.AudioContext||window.webkitAudioContext)}}
   function update(dt,state){
     const switched=state.mode!==lastMode;
     const seatChanged=state.seats.some((seat,i)=>seat!==lastSeats[i]);
@@ -68,6 +111,7 @@ const gameAudio=(()=>{
     if(!context)return;
     const active=!muted&&!state.paused&&!document.hidden;
     master.gain.setTargetAtTime(active?volume/100*2.5:0,context.currentTime,.045);
+    updateMusic(active&&context.state==='running');
     if(!active||context.state!=='running')return;
     const speed=Math.min(Math.abs(state.speed)/100,1);
     engine.frequency.setTargetAtTime(38+speed*95,context.currentTime,.12);
@@ -82,11 +126,11 @@ const gameAudio=(()=>{
       if(state.mode==='interior'&&workers&&Math.random()<workers/3)keyClick();
     }
   }
-  button.onclick=()=>{muted=!muted;buttonState();if(!muted)start();else if(master)master.gain.setTargetAtTime(0,context.currentTime,.03)};
+  button.onclick=()=>{muted=!muted;buttonState();if(!muted)start();else{stopMusic();if(master)master.gain.setTargetAtTime(0,context.currentTime,.03)}};
   slider.oninput=()=>{volume=Number(slider.value);volumeState();try{localStorage.setItem('roadfamily-volume',String(volume))}catch{};start()};
   // Browsers allow playback only after an explicit user gesture.
   window.addEventListener('pointerdown',start);
   window.addEventListener('keydown',start);
-  document.addEventListener('visibilitychange',()=>{if(document.hidden&&master)master.gain.setTargetAtTime(0,context.currentTime,.03)});
-  buttonState();return {update};
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){stopMusic();if(master)master.gain.setTargetAtTime(0,context.currentTime,.03)}});
+  buttonState();return {update,toggleRadio,changeTrack,radioState};
 })();

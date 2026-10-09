@@ -10,6 +10,10 @@ Otwórz `index.html` w przeglądarce. Gra nie wymaga instalowania zależności a
 - **Spacja**: hamulec podczas jazdy.
 - **P**: pauza.
 
+Radio znajduje się na desce rozdzielczej przy przednim prawym fotelu pasażera. Wstań od stanowiska, podejdź do tego fotela i użyj **E** lub **Usiądź przy radiu**. Z fotela obsługujesz przyciski radia pod grą: poprzedni/następny utwór oraz włącznik. Na klawiaturze działa też **R** (włącz/wyłącz) i **[ / ]** (utwór). **E / Wstań z fotela** pozwala wrócić do spacerowania. Fotel zajmuje jedna osoba naraz; aby obsługiwać radio, wybierz siedzącego na nim pasażera.
+
+Trzy własne instrumentalne utwory — „Poranna trasa”, „Słoneczne kilometry” i „Noc za oknem” — są generowane lokalnie przez Web Audio i zapętlane. Radio początkowo jest wyłączone. Muzyka gra dalej po odejściu pasażera i podczas jazdy; pauza, ukrycie karty i wyciszenie dźwięku zatrzymują odtwarzanie. Suwak głośności w nagłówku obejmuje również muzykę.
+
 Na telefonie i urządzeniach z ekranem dotykowym pod grą pojawia się joystick i przyciski:
 
 - **Joystick**: przeciągnij w kierunku spaceru; za kierownicą w górę dodajesz gazu, w dół hamujesz lub cofasz, a w lewo/prawo skręcasz.

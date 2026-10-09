@@ -42,7 +42,7 @@ $('touch-interact').onclick=interact;
 $('touch-pause').onclick=togglePause;
 function updateTouchControls(){
   const p=family[selected];
-  const label=mode==='driving'?'Wróć do wnętrza':p.seated?'Wstań':p.y<-42?'Przejmij kierownicę':Math.hypot(p.x-p.seat.x,p.y-p.seat.y)<33?'Usiądź':'Interakcja';
+  const label=interactionLabel();
   const state=[label,mode,paused,touchHint(true,false)].join('|');
   if(state===lastControlState)return;
   lastControlState=state;

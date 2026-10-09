@@ -23,7 +23,7 @@ const sandbox={console,document:{hidden:false,getElementById:element,
   createElement:()=>element('created-'+elements.size),querySelector:()=>element('game-panel'),
   querySelectorAll:()=>[],addEventListener:(event,handler)=>documentEvents.set(event,handler)},
   window:{matchMedia:()=>({matches:true}),addEventListener:(event,handler)=>windowEvents.set(event,handler)},
-  Image:class{},HTMLInputElement:class{},performance:{now:()=>0},requestAnimationFrame(){},gameAudio:{update(){}}};
+  Image:class{},HTMLInputElement:class{},performance:{now:()=>0},requestAnimationFrame(){},gameAudio:{update(){},radioState:()=>({on:false})}};
 vm.createContext(sandbox);
 for(const file of ['game.js','mobile.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'..',file),'utf8'),sandbox);
 const run=code=>vm.runInContext(code,sandbox);
