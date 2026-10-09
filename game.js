@@ -2,7 +2,8 @@
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
 ctx.imageSmoothingEnabled=false;
 const $=id=>document.getElementById(id);
-const family=[{name:'Mama',role:'Projektuje przy komputerze',color:'#d88860',hair:'#724135',x:-39,y:14,seat:{x:-39,y:14},seated:true},{name:'Tata',role:'Pracuje przy komputerze',color:'#679b91',hair:'#423c36',x:39,y:14,seat:{x:39,y:14},seated:true},{name:'Córka',role:'Tworzy na laptopie',color:'#c4ad66',hair:'#593d30',x:-38,y:69,seat:{x:-38,y:69},seated:true}];
+const workstations=[{x:-39,y:14,label:'lewe stanowisko'},{x:39,y:14,label:'prawe stanowisko'},{x:-38,y:69,label:'stanowisko z laptopem'}];
+const family=[{name:'Mama',role:'Projektuje przy komputerze',color:'#d88860',hair:'#724135',x:-39,y:14,station:0,seated:true},{name:'Tata',role:'Pracuje przy komputerze',color:'#679b91',hair:'#423c36',x:39,y:14,station:1,seated:true},{name:'Córka',role:'Tworzy na laptopie',color:'#c4ad66',hair:'#593d30',x:-38,y:69,station:2,seated:true}];
 // Each crop is measured relative to its original photograph.
 const familyPhotos=[
   {label:'Mama · Dagmara',src:'images/mama-dagmara.jpg',crop:[.05,.025,.88,.81]},
@@ -53,7 +54,20 @@ function buildFamily(){
 }
 function toast(s){$('toast').textContent=s;toastTimer=4}
 function atPassengerSeat(){return mode==='interior'&&!!family[selected].passenger}
-function interactionLabel(){const p=family[selected];return mode==='driving'?'Wróć do wnętrza':p.passenger?'Wstań z fotela':p.seated?'Wstań':p.x>12&&p.y<-35?'Usiądź przy radiu':p.y<-42&&p.x<=12?'Przejmij kierownicę':Math.hypot(p.x-p.seat.x,p.y-p.seat.y)<33?'Usiądź':'Interakcja'}
+function nearestWorkstation(p){let best=null;workstations.forEach((seat,index)=>{const distance=Math.hypot(p.x-seat.x,p.y-seat.y);if(distance<33&&(!best||distance<best.distance))best={seat,index,distance}});return best}
+function workstationOccupant(index,p){return family.find(other=>other!==p&&other.seated&&!other.passenger&&other.station===index)}
+function interactionUnavailable(){
+  const p=family[selected];if(mode==='driving'||p.passenger||p.seated)return false;
+  if(p.x>12&&p.y<-35)return family.some(other=>other!==p&&other.passenger);
+  const target=nearestWorkstation(p);return !!(target&&workstationOccupant(target.index,p));
+}
+function interactionLabel(){
+  const p=family[selected];
+  if(mode==='driving')return'Wróć do wnętrza';if(p.passenger)return'Wstań z fotela';if(p.seated)return'Wstań';
+  if(p.x>12&&p.y<-35)return family.some(other=>other!==p&&other.passenger)?'Fotel zajęty':'Usiądź przy radiu';
+  if(p.y<-42&&p.x<=12)return'Przejmij kierownicę';
+  const target=nearestWorkstation(p);return target?(workstationOccupant(target.index,p)?'Miejsce zajęte':'Usiądź'):'Interakcja';
+}
 function selectPerson(i){if(mode==='driving'){toast(touchHint('Najpierw dotknij „Wróć do wnętrza”.','Najpierw wróć do wnętrza klawiszem E.'));return}window.resetTouchControls?.();selected=i;buildFamily();toast(family[i].name+touchHint(' · Dotknij „Wstań”, potem użyj joysticka.',' · E — wstań / usiądź, WASD — spacer'))}
 function togglePause(){paused=!paused;keys.clear();window.resetTouchControls?.();$('pause-overlay').hidden=!paused;$('pause').innerHTML=paused?'▶ <span>Wznów</span>':'Ⅱ <span>Pauza</span>';window.updateTouchControls?.()}
 $('pause').onclick=togglePause;
@@ -62,14 +76,15 @@ function interact(){
   window.resetTouchControls?.();
   const p=family[selected];
   if(mode==='driving'){mode='interior';p.x=-12;p.y=-53;car.autoX=Math.round(car.x/350)*350;car.speed=32;buildFamily();toast('Kierowca znów prowadzi. Wróć do swojego stanowiska.');return}
-  if(p.passenger){p.passenger=false;p.seated=false;p.x=17;p.y=-34;buildFamily();toast('Wstajesz z fotela pasażera. Radio gra dalej.');return}
-  if(p.seated){p.seated=false;p.x=p.seat.x<0?-17:17;p.y=p.seat.y+13;walked=true;buildFamily();toast('Podejdź do kierowcy z przodu samochodu.');return}
+  if(p.passenger){p.passenger=false;p.seated=false;p.station=null;p.x=17;p.y=-34;buildFamily();toast('Wstajesz z fotela pasażera. Radio gra dalej.');return}
+  if(p.seated){const oldSeat=workstations[p.station]||workstations[0];p.seated=false;p.station=null;p.x=oldSeat.x<0?-17:17;p.y=oldSeat.y+13;walked=true;buildFamily();toast('Możesz usiąść przy dowolnym wolnym stanowisku.');return}
   if(p.x>12&&p.y<-35){
     if(family.some(other=>other.passenger)){toast('Fotel pasażera jest zajęty. Wybierz osobę, która na nim siedzi.');return}
-    p.passenger=true;p.seated=true;p.x=36;p.y=-44;buildFamily();toast(touchHint('Radio: użyj przycisków pod grą.','Radio: R — włącz / wyłącz · [ / ] — zmień utwór · E — wstań'));return;
+    p.passenger=true;p.seated=true;p.station=null;p.x=36;p.y=-44;buildFamily();toast(touchHint('Radio: dotknij przycisku ♫.','Radio: R — włącz / wyłącz · [ / ] — zmień utwór · E — wstań'));return;
   }
   if(p.y<-42&&p.x<=12){mode='driving';taken=true;buildFamily();toast(p.name+touchHint(' prowadzi · Joystick: gaz i skręt · „Wróć” — wnętrze',' prowadzi · W/S — gaz i hamulec · A/D — skręt · E — wnętrze'));return}
-  if(Math.hypot(p.x-p.seat.x,p.y-p.seat.y)<33){p.seated=true;p.x=p.seat.x;p.y=p.seat.y;buildFamily();toast(p.name+' wraca do '+(selected===2?'laptopa.':'komputera.'));return}
+  const target=nearestWorkstation(p);
+  if(target){const occupant=workstationOccupant(target.index,p);if(occupant){toast('To miejsce zajmuje '+occupant.name+'.');return}p.seated=true;p.station=target.index;p.x=target.seat.x;p.y=target.seat.y;buildFamily();toast(p.name+' siada przy '+target.seat.label+'.');return}
   toast('Podejdź do kierowcy lub do swojego stanowiska.');
 }
 window.addEventListener('keydown',e=>{if(e.target instanceof HTMLInputElement)return;const k=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright',' ','e','p','1','2','3'].includes(k))e.preventDefault();if(!e.repeat){if(k==='e')interact();if(k==='p')togglePause();if(['1','2','3'].includes(k))selectPerson(+k-1)}keys.add(k)});
@@ -119,7 +134,8 @@ function interior(){
   // Long windows, trim and warm wooden floor.
   for(const side of [-1,1]){for(const y of [-12,43]){rect(side===-1?-64:56,y,8,40,'#354e49');rect(side===-1?-62:57,y+3,5,33,'#93b8a7');rect(side===-1?-62:57,y+3,5,3,'#d2dfbc')}}
   desk(-38,-4,false);desk(38,-4,false);desk(-38,51,true);
-  family.forEach((p,i)=>{rect(p.seat.x-12,p.seat.y-3,24,25,'#555f4d');rect(p.seat.x-10,p.seat.y,20,17,'#7c8970');if(p.seated)person(p,p.x,p.y)});
+  workstations.forEach(seat=>{rect(seat.x-12,seat.y-3,24,25,'#555f4d');rect(seat.x-10,seat.y,20,17,'#7c8970')});
+  family.forEach(p=>{if(p.seated)person(p,p.x,p.y)});
   rect(29,54,24,36,'#829376');rect(27,57,4,29,'#9fac86');rect(51,57,4,29,'#9fac86');rect(31,62,18,2,'#a8b28c');rect(31,78,18,2,'#a8b28c');
   rect(34,35,10,12,'#a28761');rect(32,29,14,10,'#526b42');rect(36,25,6,14,'#75904d');rect(31,30,5,4,'#90a85d');
   // Family carpet and loose laptop cable.
@@ -152,10 +168,11 @@ function update(dt){
   $('status').textContent=mode==='driving'?p.name+' prowadzi. Miasto jest Wasze.':p.passenger?p.name+' przy radiu. Kierowca prowadzi.':p.seated?'Kierowca prowadzi. Rodzina pracuje.':p.name+' spaceruje. Kierowca prowadzi.';
   $('move-label').textContent=mode==='driving'?'Gaz / hamulec / skręt':'Poruszanie';$('control-mode').textContent=mode==='driving'?'Nowa perspektywa. Ten sam dom.':'W środku jest całkiem przytulnie.';
   $('step-one').classList.toggle('done',walked);$('step-two').classList.toggle('done',p.y<-42||taken);$('step-three').classList.toggle('done',taken);
-  if(toastTimer<=0){$('toast').textContent=mode==='driving'?'W / S  gaz i hamulec     A / D  skręt     E  wróć do wnętrza':p.seated?'E  wstań od '+(selected===2?'laptopa':'komputera')+'     1 / 2 / 3  wybierz osobę':p.y<-42?'E  przejmij kierownicę':Math.hypot(p.x-p.seat.x,p.y-p.seat.y)<33?'E  usiądź przy swoim stanowisku':'WASD  spaceruj     Podejdź do kierowcy z przodu ↑'}
+  if(toastTimer<=0){const target=nearestWorkstation(p);$('toast').textContent=mode==='driving'?'W / S  gaz i hamulec     A / D  skręt     E  wróć do wnętrza':p.seated?'E  wstań od stanowiska     1 / 2 / 3  wybierz osobę':p.y<-42?'E  przejmij kierownicę':target?(workstationOccupant(target.index,p)?'To stanowisko jest zajęte':'E  usiądź przy wolnym stanowisku'):'WASD  spaceruj     Podejdź do kierowcy z przodu ↑'}
   if(toastTimer<=0&&touchHint(true,false))$('toast').textContent=mode==='driving'?'Joystick: ↑ gaz · ↓ hamulec · ← → skręt':p.seated?'Dotknij „Wstań”. Osobę wybierzesz na jej karcie.':p.y<-42?'Dotknij „Przejmij kierownicę”.':'Joystick: spacer · Podejdź do kierowcy z przodu ↑';
-  if(toastTimer<=0&&atPassengerSeat())$('toast').textContent=touchHint('Steruj radiem przyciskami pod grą.','R — radio wł. / wył. · [ / ] — utwór · E — wstań');
+  if(toastTimer<=0&&atPassengerSeat())$('toast').textContent=touchHint('Steruj radiem przyciskami na ekranie.','R — radio wł. / wył. · [ / ] — utwór · E — wstań');
   else if(toastTimer<=0&&mode==='interior'&&!p.seated&&p.x>12&&p.y<-35)$('toast').textContent=touchHint('Dotknij „Usiądź przy radiu”.','E — usiądź na fotelu pasażera i obsługuj radio');
+  if(toastTimer<=0&&touchHint(true,false))$('toast').textContent='';
 }
 function draw(){ctx.clearRect(0,0,640,420);ctx.save();ctx.translate(320,210);ctx.scale(zoom,zoom);ctx.translate(-car.x,-car.y);world();interior();ctx.restore();
   // Pixel corner markers and quiet scene caption.

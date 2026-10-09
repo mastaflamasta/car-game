@@ -20,6 +20,13 @@ window.addEventListener('keydown',e=>{
 });
 function updateRadioControls(){
   const radio=gameAudio.radioState(),access=atPassengerSeat()&&!paused&&radio.available;
+  const mobileToggle=$('mobile-radio-toggle');
+  if(mobileToggle){
+    mobileToggle.disabled=!access;
+    mobileToggle.classList.toggle('playing',radio.on&&!radio.muted&&!paused);
+    mobileToggle.setAttribute('aria-label',access?'Sterowanie radiem':'Usiądź przy radiu, aby nim sterować');
+    if(!access){radioPanel.classList.remove('mobile-radio-open');mobileToggle.setAttribute('aria-expanded','false')}
+  }
   const state=JSON.stringify([radio,access,paused]);if(state===lastRadioState)return;lastRadioState=state;
   $('radio-track').textContent=`${String(radio.index+1).padStart(2,'0')} / ${radio.count} · ${radio.name}`;
   $('radio-access').textContent=!radio.available?'Dźwięk niedostępny w tej przeglądarce.':paused?'Podróż i muzyka zatrzymane.':!access?'Podejdź do przedniego prawego fotela i usiądź (E / Interakcja).':radio.muted?'Dźwięk wyciszony — włącz go w nagłówku.':radio.on?'Gra · możesz zmienić utwór lub wyłączyć radio.':'Radio wyłączone · wybierz utwór i włącz muzykę.';
