@@ -36,8 +36,9 @@ assert.equal(run('family[0].seated'),false);
 run('family[1].aboard=true;family[1].x=39;family[1].y=14;selected=0');
 assert.equal(run('familyMemberAtCabinPoint(39,14)'),1,'A person can be hit directly on the game canvas');
 element('game').width=640;element('game').height=420;
-element('game').fire('click',{clientX:(320+39*2.2)*116/640,clientY:(210+14*2.2)*116/420});
-assert.equal(run('selected'),1,'Clicking a person on the canvas selects them');
+const canvasFit=116/420,canvasOffsetX=(116-640*canvasFit)/2,currentZoom=run('zoom');
+element('game').fire('pointerup',{clientX:canvasOffsetX+(320+39*currentZoom)*canvasFit,clientY:(210+14*currentZoom)*canvasFit});
+assert.equal(run('selected'),1,'Tapping a person on a cover-cropped mobile canvas selects them');
 run('selected=0');
 stick.fire('pointerdown',pointer(1,90,58));
 const startX=run('family[0].x');run('update(.1)');
@@ -86,6 +87,8 @@ run("mode='interior';paused=false;selected=0;family[0].seated=false;family[0].st
 assert.equal(run('interactionUnavailable()'),false,'A seated person keeps the nearby interaction available');
 assert.equal(run('interactionLabel()'),'Przytul','An occupied workstation offers a hug instead of a disabled action');
 run('interact()');assert.equal(run('family[0].seated'),false,'Hugging leaves the active person standing');
+run('family[0].x=0;family[0].y=-50');assert.equal(run('interactionLabel()'),'Interakcja','The steering wheel cannot be taken over from the middle of the cabin');
+run('family[0].x=-12;family[0].y=-50');assert.equal(run('interactionLabel()'),'Przejmij kierownicę','The steering wheel is available only at the driver seat');
 run('family[2].seated=false;family[2].station=null;family[0].x=-38;family[0].y=82;interact()');
 assert.equal(run('family[0].seated'),true,'A person can use somebody else\'s free workstation');
 assert.equal(run('family[0].station'),2,'The newly occupied workstation is remembered');
@@ -97,6 +100,7 @@ run('interact()');assert.equal(run('family[3].aboard'),true,'Tosia can be picked
 assert.equal(run('family[3].station'),3,'The first picked-up child uses the first couch seat');
 run('car.x=760;car.y=-230;interact()');assert.equal(run('family[4].aboard'),true,'Łucja can be picked up from the map');
 assert.equal(run('family[4].station'),4,'The second picked-up child uses the second couch seat');
+assert.deepEqual(Array.from(run('seatedFamilyInDrawOrder().filter(p=>p.station>=3).map(p=>p.station)')),[3,4],'The lower couch occupant is drawn last and stays in front');
 run("mode='interior';selected=4;interact()");assert.equal(run('family[4].seated'),false,'A person can stand up from the rear couch seat');
 assert.equal(run('canWalk(family[4].x,family[4].y)'),true,'The couch exit point is inside the walkable aisle');
 const couchExitY=run('family[4].y');run("touchKeys.add('w');update(.1);touchKeys.clear()");
