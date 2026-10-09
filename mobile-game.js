@@ -10,10 +10,10 @@
   const toolbar = document.createElement('div');
   toolbar.className = 'mobile-game-toolbar';
   toolbar.setAttribute('aria-label', 'Ustawienia gry');
-  const sound = document.getElementById('audio-toggle');
-  const volume = document.querySelector('.volume-control');
-  if (sound) toolbar.append(sound);
-  if (volume) toolbar.append(volume);
+  const money = document.getElementById('money-counter');
+  const settings = document.getElementById('settings-toggle');
+  if (money) toolbar.append(money);
+  if (settings) toolbar.append(settings);
   if (document.documentElement.requestFullscreen) {
     const fullscreen = document.createElement('button');
     fullscreen.type = 'button';
@@ -22,6 +22,11 @@
     fullscreen.setAttribute('aria-label', 'Pełny ekran');
     fullscreen.onclick = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen({ navigationUI: 'hide' }); } catch {} };
     toolbar.append(fullscreen);
+  }
+  const touchPause = document.getElementById('touch-pause');
+  if (touchPause) {
+    touchPause.classList.add('mobile-toolbar-pause');
+    toolbar.append(touchPause);
   }
   panel.prepend(toolbar);
   if (family) { family.classList.add('mobile-family-switcher'); stage.append(family); }

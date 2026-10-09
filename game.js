@@ -5,20 +5,22 @@ const $=id=>document.getElementById(id);
 const workstations=[{x:-39,y:14,label:'lewym stanowisku'},{x:39,y:14,label:'prawym stanowisku'},{x:-38,y:69,label:'stanowisku z laptopem'}];
 const cabinSeats=[...workstations,{x:40,y:58,label:'przedniej części kanapy'},{x:40,y:79,label:'tylnej części kanapy'}];
 const family=[
-  {name:'Mama',role:'Projektuje przy komputerze',color:'#d88860',hair:'#724135',x:-39,y:14,station:0,seated:true,aboard:true},
-  {name:'Tata',role:'Pracuje przy komputerze',color:'#679b91',hair:'#423c36',x:39,y:14,station:1,seated:true,aboard:true},
-  {name:'Nela',role:'Tworzy na laptopie',color:'#c4ad66',hair:'#593d30',x:-38,y:69,station:2,seated:true,aboard:true},
-  {name:'Tosia',pickupName:'Tosię',role:'Czeka na rodzinę',color:'#c98b75',hair:'#7a503e',x:0,y:0,station:null,seated:false,aboard:false,pickup:{x:410,y:470}},
-  {name:'Łucja',pickupName:'Łucję',role:'Czeka na rodzinę',color:'#8aa5b2',hair:'#684638',x:0,y:0,station:null,seated:false,aboard:false,pickup:{x:290,y:120}}
+  {name:'Mama',role:'Projektuje przy komputerze',color:'#d88860',hair:'#9a5239',hairStyle:'bob',glasses:true,x:-39,y:14,station:0,seated:true,aboard:true},
+  {name:'Tata',role:'Pracuje przy komputerze',color:'#679b91',hair:'#423c36',hairStyle:'short',x:39,y:14,station:1,seated:true,aboard:true},
+  {name:'Nela',role:'Tworzy na laptopie',color:'#c4ad66',hair:'#b97838',hairStyle:'long',x:-38,y:69,station:2,seated:true,aboard:true},
+  {name:'Tosia',pickupName:'Tosię',role:'Czeka na rodzinę',color:'#c98b75',hair:'#b34e2e',hairStyle:'bob',glasses:true,x:0,y:0,station:null,seated:false,aboard:false,pickup:{x:410,y:-50}},
+  {name:'Łucja',pickupName:'Łucję',role:'Czeka na rodzinę',color:'#8aa5b2',hair:'#51352e',hairStyle:'short',glasses:true,x:0,y:0,station:null,seated:false,aboard:false,pickup:{x:760,y:-230}}
 ];
 // Each crop is measured relative to its original photograph.
 const familyPhotos=[
-  {label:'Mama · Dagmara',src:'images/mama-dagmara.jpg',crop:[.05,.025,.88,.81]},
-  {label:'Tata · Andrzej',src:'images/tata-andrzej.jpg',crop:[.025,.015,.92,.875]},
-  {label:'Córka · Nela',src:'images/corka-nela.jpg',crop:[.04,.015,.92,.875]},
-  {label:'Córka · Tosia',srcs:['images/corka-tosia.jpg','images/corka-tosia.png'],crop:[0,.03,1,.91]},
-  {label:'Córka · Łucja',srcs:['images/corka-łucja.jpg','images/corka-łucja.png','images/corka-lucja.jpg','images/corka-lucja.png'],crop:[0,.04,1,.875]}
+  {label:'Mama · Dagmara',src:'images/mama-dagmara.jpg',pixel:'images/mama-dagmara-pixel.png',pixelCrop:[.12,.02,.76,.89],crop:[.05,.025,.88,.81]},
+  {label:'Tata · Andrzej',src:'images/tata-andrzej.jpg',pixel:'images/tata-andrzej-pixel.png',pixelCrop:[.13,.01,.74,.86],crop:[.025,.015,.92,.875]},
+  {label:'Córka · Nela',src:'images/corka-nela.jpg',pixel:'images/corka-nela-pixel.png',pixelCrop:[.08,.01,.84,.98],crop:[.04,.015,.92,.875]},
+  {label:'Córka · Tosia',srcs:['images/corka-tosia.jpg','images/corka-tosia.png'],pixel:'images/corka-tosia-pixel.png',pixelCrop:[.08,.01,.84,.98],crop:[0,.03,1,.91]},
+  {label:'Córka · Łucja',srcs:['images/corka-łucja.jpg','images/corka-łucja.png','images/corka-lucja.jpg','images/corka-lucja.png'],pixel:'images/corka-łucja-pixel.png',pixelCrop:[.1,.01,.8,.93],crop:[0,.04,1,.875]}
 ];
+let characterStyle='photo';
+try{characterStyle=window.localStorage?.getItem('roadfamily-character-style')==='pixel'?'pixel':'photo'}catch{}
 function loadFamilyPhotos(){
   familyPhotos.forEach((photo,i)=>{
     const img=new Image();
@@ -35,32 +37,47 @@ function loadFamilyPhotos(){
     const sources=photo.srcs||[photo.src];let sourceIndex=0;
     img.onerror=()=>{sourceIndex++;if(sourceIndex<sources.length)img.src=sources[sourceIndex];else console.warn('Nie udało się wczytać portretu:',sources.join(', '))};
     img.src=sources[sourceIndex];
+    const pixel=new Image();pixel.onload=()=>{family[i].pixel=pixel;const [x,y,w,h]=photo.pixelCrop;const face=document.createElement('canvas');face.width=14;face.height=17;const c=face.getContext('2d');c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';c.drawImage(pixel,x*pixel.naturalWidth,y*pixel.naturalHeight,w*pixel.naturalWidth,h*pixel.naturalHeight,0,0,14,17);family[i].pixelFace=face;buildFamily()};pixel.onerror=()=>console.warn('Nie udało się wczytać grafiki pixel art:',photo.pixel);pixel.src=photo.pixel;
   });
 }
 let selected=0,mode='interior',zoom=2.2,roof=0,paused=false,time=0,distance=0,toastTimer=5,walked=false,taken=false;
+let money=0,lastMoneyShown=-1;
+const coinParticles=[];
 const car={x:350,y:650,angle:0,speed:32,autoX:350};
 const keys=new Set();
 const touchKeys=new Set();
 const touchHint=(mobile,keyboard)=>window.matchMedia('(max-width:740px), (any-pointer:coarse)').matches?mobile:keyboard;
 const rect=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),w,h)};
+const characterArt=p=>characterStyle==='pixel'&&(p.pixelFace||p.pixel)?(p.pixelFace||p.pixel):p.face;
+const characterPortraitArt=p=>characterStyle==='pixel'&&p.pixel?p.pixel:p.face;
+function drawPixelHead(p,x,y){
+  const skin='#e2b88d',line='#40352f',light='#f0c69a';
+  if(p.hairStyle==='long'){rect(x-7,y-11,14,14,p.hair);rect(x-8,y-8,3,13,p.hair);rect(x+5,y-8,3,13,p.hair)}
+  else if(p.hairStyle==='bob'){rect(x-7,y-11,14,12,p.hair);rect(x-7,y-7,3,10,p.hair);rect(x+5,y-7,3,10,p.hair)}
+  else rect(x-6,y-11,12,7,p.hair);
+  rect(x-5,y-8,10,9,skin);rect(x-4,y-8,8,2,p.hair);rect(x-5,y-7,2,3,p.hair);
+  if(p.glasses){rect(x-5,y-5,4,1,line);rect(x-5,y-2,4,1,line);rect(x-5,y-5,1,4,line);rect(x-2,y-5,1,4,line);rect(x+1,y-5,4,1,line);rect(x+1,y-2,4,1,line);rect(x+1,y-5,1,4,line);rect(x+4,y-5,1,4,line);rect(x-1,y-4,2,1,line)}
+  else{rect(x-3,y-4,1,1,line);rect(x+2,y-4,1,1,line)}
+  rect(x-1,y-1,3,1,p.name==='Tata'?'#8f644f':'#b85e5a');rect(x-4,y-7,2,1,light);
+}
 function person(p,x,y,dir=0,walking=false){
   const step=walking?Math.sin(time*15)*2:0;
   rect(x-5,y+7,4,5+step,'#303e39');rect(x+1,y+7,4,5-step,'#303e39');
   rect(x-7,y,14,9,p.color);rect(x-9,y+1,3,6,'#e2b88d');rect(x+6,y+1,3,6,'#e2b88d');
-  if(p.face){
-    ctx.save();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-    ctx.drawImage(p.face,Math.round(x-9),Math.round(y-17),18,21);ctx.restore();
+  const art=characterArt(p);
+  if(art){
+    ctx.save();ctx.imageSmoothingEnabled=characterStyle!=='pixel';if(characterStyle!=='pixel')ctx.imageSmoothingQuality='high';
+    const width=characterStyle==='pixel'?14:18,height=characterStyle==='pixel'?17:21;
+    ctx.drawImage(art,Math.round(x-width/2),Math.round(y-(characterStyle==='pixel'?14:17)),width,height);ctx.restore();
     return;
   }
-  rect(x-6,y-10,12,11,p.hair);rect(x-5,y-6,10,7,'#e2b88d');rect(x-6,y-10,12,4,p.hair);
-  if(p.name==='Córka'){rect(x-7,y-8,3,12,p.hair);rect(x+5,y-8,3,12,p.hair)}
-  rect(x-3,y-3,2,2,'#35352f');rect(x+2,y-3,2,2,'#35352f');
+  drawPixelHead(p,x,y);
 }
 function buildFamily(){
   const aboard=family.map((p,i)=>({p,i})).filter(({p})=>p.aboard);
-  $('family').innerHTML=aboard.map(({p,i})=>`<button class="person ${i===selected?'active':''}" data-person="${i}" aria-pressed="${i===selected}"><canvas class="portrait ${p.face?'photo-portrait':''}" width="96" height="112" id="portrait-${i}" aria-hidden="true"></canvas><span class="person-info"><strong>${familyPhotos[i].label}</strong><small>${p.passenger?'Pasażer · obsługuje radio':p.seated?'Siedzi przy '+cabinSeats[p.station].label:(mode==='driving'&&i===selected?'Prowadzi samochód':'Spaceruje po wnętrzu')}</small></span><span class="shortcut">${i+1}</span></button>`).join('');
+  $('family').innerHTML=aboard.map(({p,i})=>`<button class="person ${i===selected?'active':''}" data-person="${i}" aria-pressed="${i===selected}"><canvas class="portrait ${characterStyle==='photo'&&p.face?'photo-portrait':'pixel-portrait'}" width="96" height="112" id="portrait-${i}" aria-hidden="true"></canvas><span class="person-info"><strong>${familyPhotos[i].label}</strong><small>${p.passenger?'Pasażer · obsługuje radio':p.seated?'Siedzi przy '+cabinSeats[p.station].label:(mode==='driving'&&i===selected?'Prowadzi samochód':'Spaceruje po wnętrzu')}</small></span><span class="shortcut">${i+1}</span></button>`).join('');
   aboard.forEach(({p,i})=>{const c=$('portrait-'+i).getContext('2d');c.fillStyle='#34402d';c.fillRect(0,0,24,28);c.fillStyle=p.color;c.fillRect(5,16,14,12);c.fillStyle=p.hair;c.fillRect(6,4,12,13);c.fillStyle='#e2b88d';c.fillRect(7,9,10,9);c.fillStyle='#35352f';c.fillRect(9,12,2,2);c.fillRect(14,12,2,2)});
-  aboard.forEach(({p,i})=>{const c=$('portrait-'+i).getContext('2d');if(p.face){c.clearRect(0,0,96,112);c.drawImage(p.face,0,0)}else{const fallback=document.createElement('canvas');fallback.width=24;fallback.height=28;fallback.getContext('2d').drawImage(c.canvas,0,0,24,28,0,0,24,28);c.clearRect(0,0,96,112);c.imageSmoothingEnabled=false;c.drawImage(fallback,0,0,96,112)}});
+  aboard.forEach(({p,i})=>{const c=$('portrait-'+i).getContext('2d'),art=characterPortraitArt(p);if(art){c.clearRect(0,0,96,112);c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';if(characterStyle==='pixel'){const ratio=Math.min(96/art.naturalWidth,112/art.naturalHeight),w=art.naturalWidth*ratio,h=art.naturalHeight*ratio;c.drawImage(art,(96-w)/2,(112-h)/2,w,h)}else c.drawImage(art,0,0,96,112)}else{const fallback=document.createElement('canvas');fallback.width=24;fallback.height=28;fallback.getContext('2d').drawImage(c.canvas,0,0,24,28,0,0,24,28);c.clearRect(0,0,96,112);c.imageSmoothingEnabled=false;c.drawImage(fallback,0,0,96,112)}});
   document.querySelectorAll('[data-person]').forEach(b=>b.onclick=()=>selectPerson(+b.dataset.person));
   if($('aboard-count'))$('aboard-count').textContent=String(aboard.length+1).padStart(2,'0')+' / 06';
 }
@@ -68,7 +85,8 @@ function toast(s){$('toast').textContent=s;toastTimer=4}
 function atPassengerSeat(){return mode==='interior'&&!!family[selected].passenger}
 function nearestWorkstation(p){let best=null;cabinSeats.forEach((seat,index)=>{const distance=Math.hypot(p.x-seat.x,p.y-seat.y);if(distance<33&&(!best||distance<best.distance))best={seat,index,distance}});return best}
 function workstationOccupant(index,p){return family.find(other=>other!==p&&other.seated&&!other.passenger&&other.station===index)}
-function waitingFamilyNearCar(){return family.filter(p=>!p.aboard&&p.pickup).map(p=>({p,distance:Math.hypot(car.x-p.pickup.x,car.y-p.pickup.y)})).filter(item=>item.distance<82).sort((a,b)=>a.distance-b.distance)[0]?.p}
+function nearestWaitingFamily(){return family.filter(p=>!p.aboard&&p.pickup).map(p=>({p,distance:Math.hypot(car.x-p.pickup.x,car.y-p.pickup.y)})).sort((a,b)=>a.distance-b.distance)[0]}
+function waitingFamilyNearCar(){const nearest=nearestWaitingFamily();return nearest&&nearest.distance<82?nearest.p:null}
 function standingSpotForSeat(index){
   const seat=cabinSeats[index]||cabinSeats[0];
   const candidates=index>=3?[{x:16,y:Math.min(78,seat.y)},{x:14,y:46},{x:0,y:82}]:[{x:seat.x<0?-17:17,y:Math.min(84,seat.y+13)},{x:0,y:38}];
@@ -104,7 +122,7 @@ function interact(){
     if(family.some(other=>other.passenger)){toast('Fotel pasażera jest zajęty. Wybierz osobę, która na nim siedzi.');return}
     p.passenger=true;p.seated=true;p.station=null;p.x=36;p.y=-44;buildFamily();toast(touchHint('Radio: dotknij przycisku ♫.','Radio: R — włącz / wyłącz · [ / ] — zmień utwór · E — wstań'));return;
   }
-  if(p.y<-42&&p.x<=12){mode='driving';taken=true;buildFamily();toast(p.name+touchHint(' prowadzi · Joystick: gaz i skręt · „Wróć” — wnętrze',' prowadzi · W/S — gaz i hamulec · A/D — skręt · E — wnętrze'));return}
+  if(p.y<-42&&p.x<=12){mode='driving';taken=true;buildFamily();toast(p.name+touchHint(' prowadzi · ↑ gaz · ↓ hamulec · ← → skręt',' prowadzi · W/S — gaz i hamulec · A/D — skręt · E — wnętrze'));return}
   const target=nearestWorkstation(p);
   if(target){const occupant=workstationOccupant(target.index,p);if(occupant){toast('To miejsce zajmuje '+occupant.name+'.');return}p.seated=true;p.station=target.index;p.x=target.seat.x;p.y=target.seat.y;buildFamily();toast(p.name+' siada przy '+target.seat.label+'.');return}
   toast('Podejdź do kierowcy lub do swojego stanowiska.');
@@ -166,14 +184,29 @@ function interior(){
   family.forEach((p,i)=>{if(p.aboard&&!p.seated){if(i===selected){rect(p.x-9,p.y+12,18,2,'#d8ee9b')}person(p,p.x,p.y,0,i===selected&&down('w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'))}});
   const p=family[selected];if(p.seated){rect(p.x-9,p.y+14,18,2,'#d8ee9b')}
   if(!p.seated&&p.y<-35){const px=p.x>12?30:0;rect(px-7,-82,14,10,'#243b2f');ctx.fillStyle='#e3f0b1';ctx.font='9px monospace';ctx.fillText('E',px-3,-74)}
+  drawCoinParticles();
   ctx.globalAlpha=roof;vehicle(0,0,0,'#e0d1a4',true);ctx.globalAlpha=1;
   ctx.restore();
 }
 function canWalk(x,y){if(x<-48||x>48||y<-54||y>89)return false;const obstacles=[[-56,-21,-23,10],[23,-21,56,10],[-56,35,-23,65],[27,52,56,90]];return !obstacles.some(([a,b,c,d])=>x>a-5&&x<c+5&&y>b-8&&y<d+8)}
+function activeWorkers(){return family.filter(p=>p.aboard&&p.seated&&!p.passenger&&Number.isInteger(p.station)&&p.station<workstations.length)}
+function updateEconomy(dt){
+  const workers=activeWorkers();money+=workers.length*2*dt;
+  family.forEach(p=>{
+    if(!workers.includes(p)){p.coinTimer=.2;return}
+    p.coinTimer=(p.coinTimer??.15)-dt;
+    if(p.coinTimer<=0){const seat=cabinSeats[p.station];coinParticles.push({x:seat.x+(Math.random()-.5)*8,y:seat.y-18,age:0,life:.85,drift:(Math.random()-.5)*7});p.coinTimer=.48+Math.random()*.25}
+  });
+  for(let i=coinParticles.length-1;i>=0;i--){const coin=coinParticles[i];coin.age+=dt;coin.y-=13*dt;coin.x+=coin.drift*dt;if(coin.age>=coin.life)coinParticles.splice(i,1)}
+  const shown=Math.floor(money);if(shown!==lastMoneyShown){$('money-value').textContent=shown.toLocaleString('pl-PL');lastMoneyShown=shown}
+}
+function drawCoinParticles(){
+  coinParticles.forEach(coin=>{const alpha=Math.max(0,1-coin.age/coin.life);ctx.globalAlpha=alpha;const pulse=coin.age<.12?1+coin.age*4:1;ctx.fillStyle='#9d7927';ctx.beginPath();ctx.arc(coin.x,coin.y,4*pulse,0,Math.PI*2);ctx.fill();ctx.fillStyle='#f4dc76';ctx.beginPath();ctx.arc(coin.x,coin.y-1,2.7*pulse,0,Math.PI*2);ctx.fill();ctx.fillStyle='#7a5b1d';ctx.font='bold 5px monospace';ctx.textAlign='center';ctx.fillText('$',coin.x,coin.y+1.5);ctx.textAlign='start';ctx.globalAlpha=1})
+}
 function update(dt){
   window.updateTouchControls?.();
   window.updateRadioControls?.();
-  if(paused)return;time+=dt;toastTimer-=dt;
+  if(paused)return;time+=dt;toastTimer-=dt;updateEconomy(dt);
   const p=family[selected];if(mode==='interior'){
     // Autopilot follows the northbound avenue while everyone works.
     car.angle+=(0-car.angle)*Math.min(1,dt*4);car.x+=(car.autoX-car.x)*Math.min(1,dt*2);car.y-=23*dt;car.speed=32;
@@ -202,6 +235,34 @@ function draw(){ctx.clearRect(0,0,640,420);ctx.save();ctx.translate(320,210);ctx
   // Pixel corner markers and quiet scene caption.
   rect(13,13,19,2,'#d8e1b7');rect(13,13,2,19,'#d8e1b7');rect(608,13,19,2,'#d8e1b7');rect(625,13,2,19,'#d8e1b7');
   ctx.fillStyle='#edf0cf';ctx.font='9px monospace';ctx.fillText(mode==='driving'?'RODZINNA PODRÓŻ / WIDOK MIASTA':'MOBILNY DOM / '+family[selected].name.toUpperCase(),24,36);
+  drawPickupIndicator();
 }
-let last=performance.now();function frame(now){const dt=Math.min((now-last)/1000,.04);last=now;update(dt);gameAudio.update(dt,{mode,speed:car.speed,paused,seats:family.filter(p=>p.aboard).map(p=>p.seated&&!p.passenger)});draw();requestAnimationFrame(frame)}
-buildFamily();loadFamilyPhotos();requestAnimationFrame(frame);
+function pickupTargetVisible(target){
+  if(!target)return false;const x=320+(target.p.pickup.x-car.x)*zoom,y=210+(target.p.pickup.y-car.y)*zoom;
+  return x>18&&x<622&&y>18&&y<402;
+}
+function drawPickupIndicator(){
+  if(mode!=='driving')return;const target=nearestWaitingFamily();if(!target||pickupTargetVisible(target))return;
+  const dx=target.p.pickup.x-car.x,dy=target.p.pickup.y-car.y,length=Math.hypot(dx,dy)||1,ux=dx/length,uy=dy/length;
+  const reach=Math.min(288/(Math.abs(ux)||.001),178/(Math.abs(uy)||.001));const x=320+ux*reach,y=210+uy*reach;
+  ctx.save();ctx.translate(x,y);ctx.rotate(Math.atan2(uy,ux));ctx.fillStyle='#d1e997';ctx.beginPath();ctx.moveTo(23,0);ctx.lineTo(15,-5);ctx.lineTo(15,5);ctx.closePath();ctx.fill();ctx.restore();
+  ctx.save();ctx.translate(x,y);ctx.fillStyle='#101816e8';ctx.beginPath();ctx.arc(0,0,14,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#d1e997';ctx.lineWidth=2;ctx.stroke();
+  const art=characterArt(target.p);ctx.save();ctx.beginPath();ctx.arc(0,0,11,0,Math.PI*2);ctx.clip();if(art){ctx.imageSmoothingEnabled=characterStyle!=='pixel';ctx.drawImage(art,-11,-13,22,26)}else{ctx.fillStyle=target.p.color;ctx.fillRect(-11,-11,22,22);ctx.fillStyle='#f0f0df';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText(target.p.name[0],0,3)}ctx.restore();ctx.restore();
+  const label=target.p.name+' '+Math.round(target.distance)+' m';ctx.font='7px monospace';const width=Math.ceil(ctx.measureText(label).width)+8;ctx.fillStyle='#101816d9';ctx.fillRect(x-width/2,y+16,width,11);ctx.fillStyle='#edf0cf';ctx.textAlign='center';ctx.fillText(label,x,y+24);ctx.textAlign='start';
+}
+function setCharacterStyle(style){
+  characterStyle=style==='pixel'?'pixel':'photo';
+  try{window.localStorage?.setItem('roadfamily-character-style',characterStyle)}catch{}
+  document.querySelectorAll('input[name="character-style"]').forEach(input=>input.checked=input.value===characterStyle);
+  buildFamily();
+}
+window.setCharacterStyle=setCharacterStyle;
+const settingsModal=$('settings-modal'),settingsToggle=$('settings-toggle'),settingsClose=$('settings-close');let settingsWasPaused=false;
+function openSettings(){settingsWasPaused=paused;if(!paused)togglePause();settingsModal.hidden=false;document.querySelector(`input[name="character-style"][value="${characterStyle}"]`)?.focus()}
+function closeSettings(){settingsModal.hidden=true;if(!settingsWasPaused&&paused)togglePause();settingsToggle.focus?.()}
+settingsToggle.onclick=openSettings;settingsClose.onclick=closeSettings;
+settingsModal.addEventListener('click',event=>{if(event.target===settingsModal)closeSettings()});
+document.querySelectorAll('input[name="character-style"]').forEach(input=>input.addEventListener('change',()=>{if(input.checked)setCharacterStyle(input.value)}));
+window.addEventListener('keydown',event=>{if(event.key==='Escape'&&!settingsModal.hidden){event.preventDefault();closeSettings()}});
+let last=performance.now();function frame(now){const dt=Math.min((now-last)/1000,.04);last=now;update(dt);gameAudio.update(dt,{mode,speed:car.speed,paused,seats:family.filter(p=>p.aboard).map(p=>p.seated&&!p.passenger&&Number.isInteger(p.station)&&p.station<workstations.length)});draw();requestAnimationFrame(frame)}
+setCharacterStyle(characterStyle);loadFamilyPhotos();requestAnimationFrame(frame);
