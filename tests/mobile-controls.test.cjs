@@ -102,8 +102,10 @@ assert.equal(run('family[0].seated'),true,'A person can use somebody else\'s fre
 assert.equal(run('family[0].station'),2,'The newly occupied workstation is remembered');
 run("family.slice(0,3).forEach((p,i)=>{p.aboard=true;p.seated=true;p.passenger=false;p.station=i;p.x=cabinSeats[i].x;p.y=cabinSeats[i].y});family[3].aboard=false;family[3].seated=false;family[3].station=null;family[4].aboard=false;family[4].seated=false;family[4].station=null;mode='driving';selected=0;car.x=410;car.y=-50");
 assert.equal(run('interactionLabel()'),'Zabierz Tosię');
-assert.equal(run('pickupTargetVisible(nearestWaitingFamily())'),true,'The navigation indicator hides when the waiting person is already on screen');
-run('car.y=650');assert.equal(run('pickupTargetVisible(nearestWaitingFamily())'),false,'The navigation indicator appears for an off-screen person');run('car.y=-50');
+assert.equal(run('pickupIndicatorStage(streetPeopleByDistance().find(target=>target.p.name===\'Tosia\'))'),null,'A character indicator disappears inside pickup range');
+run('car.y=200');assert.equal(run('pickupIndicatorStage(streetPeopleByDistance().find(target=>target.p.name===\'Tosia\'))'),'portrait','A nearer outdoor character uses a portrait indicator');
+run('car.y=650');assert.equal(run('pickupIndicatorStage(streetPeopleByDistance().find(target=>target.p.name===\'Tosia\'))'),'arrow','A distant outdoor character uses only a colored arrow');run('car.y=-50');
+run('car.x=350;car.y=650');const kasiaIndicator=run("pickupIndicatorPoint(streetPeopleByDistance().find(target=>target.p.name==='Kasia'),24)");const visibleIndicatorBounds=run('pickupIndicatorBounds(24)');assert(kasiaIndicator.x>=visibleIndicatorBounds.left&&kasiaIndicator.x<=visibleIndicatorBounds.right&&kasiaIndicator.y>=visibleIndicatorBounds.top&&kasiaIndicator.y<=visibleIndicatorBounds.bottom,'Kasia\'s arrow stays inside the cover-cropped mobile viewport');run('car.x=410;car.y=-50');
 run('interact()');assert.equal(run('family[3].aboard'),true,'Tosia can be picked up from the map');
 assert.equal(element('character-dialog').hidden,false,'Picking up a person opens the character dialog');
 assert(run("pickupDialogMessages.includes(document.getElementById('character-dialog-message').textContent)"),'A picked-up person gets a random ride message');
@@ -112,6 +114,7 @@ run('car.x=760;car.y=-230;interact()');assert.equal(run('family[4].aboard'),true
 assert.equal(run('family[4].station'),4,'The second picked-up child uses the second couch seat');
 run('car.x=family[5].pickup.x;car.y=family[5].pickup.y');assert.equal(run('interactionLabel()'),'Zabierz Kasię','Kasia can be approached in the city');
 run('interact()');assert.equal(run('family[5].aboard'),false,'Kasia refuses to enter the vehicle');
+run('car.y=family[5].pickup.y+200');assert.equal(run('pickupIndicatorStage(streetPeopleByDistance().find(target=>target.p.name===\'Kasia\'))'),'portrait','Kasia has an outdoor portrait indicator despite refusing the ride');run('car.y=family[5].pickup.y');
 assert(run("kasiaDialogMessages.includes(document.getElementById('character-dialog-message').textContent)"),'Kasia gets one of her refusal messages');
 assert(element('character-dialog-image').src.endsWith('kolazanka-kasia-pixel-naburmuszona.png'),'A negative reaction uses Kasia\'s upset pixel portrait');
 run('interact();interact();interact()');assert.equal(run('family[5].aboard'),false,'Kasia refuses exactly four times');

@@ -48,9 +48,9 @@
   .mobile-game-shell .touch-actions button { min-height:48px; background:rgba(43,56,38,.92); }
   .mobile-game-shell .touch-controls.driving .touch-actions { right:max(12px,env(safe-area-inset-right)); bottom:max(104px,calc(env(safe-area-inset-bottom) + 96px)); width:162px; }
   .mobile-game-shell .touch-controls.driving .touch-actions button { min-height:40px; color:#dbe6cf; background:rgba(18,29,23,.9); border-color:#536650; font-size:10px; }
-  .mobile-game-shell .toast { position:absolute!important; z-index:11; top:70px!important; bottom:auto!important; left:50%!important; width:max-content!important; max-width:calc(100vw - 24px)!important; min-height:0!important; padding:5px 9px!important; transform:translateX(-50%)!important; border:1px solid rgba(97,115,86,.72)!important; border-radius:999px!important; background:rgba(8,18,13,.7)!important; font-size:9px!important; line-height:1.25!important; white-space:normal!important; text-align:center!important; opacity:.82; transition:opacity .18s; }
+  .mobile-game-shell .toast { position:absolute!important; z-index:11; top:102px!important; bottom:auto!important; left:50%!important; width:max-content!important; max-width:calc(100vw - 24px)!important; min-height:0!important; padding:5px 9px!important; transform:translateX(-50%)!important; border:1px solid rgba(97,115,86,.72)!important; border-radius:999px!important; background:rgba(8,18,13,.7)!important; font-size:9px!important; line-height:1.25!important; white-space:normal!important; text-align:center!important; opacity:.82; transition:opacity .18s; }
   .mobile-game-shell .toast:empty { display:none!important; }
-  .mobile-game-shell .character-dialog { z-index:14; left:max(12px,env(safe-area-inset-left)); bottom:max(138px,calc(env(safe-area-inset-bottom) + 130px)); width:min(370px,calc(100vw - 24px)); min-height:112px; padding:10px; gap:13px; background:rgba(8,18,13,.94); }
+  .mobile-game-shell .character-dialog { z-index:14; left:max(12px,env(safe-area-inset-left)); bottom:max(174px,calc(env(safe-area-inset-bottom) + 166px)); width:min(370px,calc(100vw - 24px)); min-height:112px; padding:10px; gap:13px; background:rgba(8,18,13,.94); }
   .mobile-game-shell .character-dialog img { width:90px; height:90px; flex-basis:90px; }
   .mobile-game-shell .character-dialog strong { font-size:11px; }
   .mobile-game-shell .character-dialog p { font-size:18px; }
@@ -76,6 +76,7 @@
   .mobile-game-shell .touch-actions { width:150px; }
   .mobile-game-shell .touch-controls.driving .touch-actions { bottom:max(92px,calc(env(safe-area-inset-bottom) + 84px)); width:142px; }
   .drive-pedals button { width:66px; height:66px; }
+  .mobile-game-shell .character-dialog { bottom:max(154px,calc(env(safe-area-inset-bottom) + 146px)); }
   .mobile-radio-toggle { left:112px; bottom:max(12px,env(safe-area-inset-bottom)); }
   .mobile-game-shell .radio-panel { width:164px; bottom:max(64px,calc(env(safe-area-inset-bottom) + 54px)); }
 }
@@ -85,7 +86,8 @@
   .mobile-game-shell .joystick { width:94px; height:94px; }
   .mobile-game-shell .joystick-arrows { line-height:26px; }
   .mobile-game-shell .touch-actions { max-width:210px; }
-  .mobile-game-shell .toast { top:62px!important; }
+  .mobile-game-shell .toast { top:92px!important; }
+  .mobile-game-shell .character-dialog { bottom:max(116px,calc(env(safe-area-inset-bottom) + 108px)); min-height:96px; }
   .mobile-radio-toggle { right:max(222px,calc(env(safe-area-inset-right) + 214px)); left:auto; bottom:max(12px,env(safe-area-inset-bottom)); }
   .mobile-game-shell .radio-panel { right:max(272px,calc(env(safe-area-inset-right) + 264px)); bottom:max(12px,env(safe-area-inset-bottom)); width:174px; }
 }
