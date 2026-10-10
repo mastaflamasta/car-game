@@ -15,12 +15,15 @@
   .mobile-game-toolbar .volume-control input { width:min(22vw,90px); }
   .mobile-game-stage { position:relative!important; min-width:0; min-height:0; overflow:hidden; background:#526550; aspect-ratio:auto!important; }
   .mobile-game-stage>#game { position:absolute; inset:0; width:100%!important; height:100%!important; max-width:none!important; max-height:none!important; object-fit:cover; image-rendering:pixelated; touch-action:manipulation; }
-  .mobile-family-switcher { --person-chip-size:clamp(52px,calc((100vw - 56px)/5),66px); position:absolute; z-index:12; top:8px; left:50%; display:flex!important; gap:7px; width:auto; transform:translateX(-50%); }
-  .mobile-family-switcher .person { width:var(--person-chip-size); min-width:var(--person-chip-size); height:70px; margin:0; padding:4px; justify-content:center; border:2px solid rgba(209,233,151,.4); background:rgba(8,18,13,.84); backdrop-filter:blur(4px); }
-  .mobile-family-switcher .person.active { border-color:#d1e997; background:rgba(40,57,43,.96); box-shadow:0 0 0 2px rgba(209,233,151,.42),0 3px 12px rgba(0,0,0,.45); }
+  .mobile-family-switcher { --person-chip-size:clamp(58px,20vw,78px); position:absolute; z-index:12; top:8px; left:12px; display:flex!important; justify-content:center; gap:7px; width:calc(100vw - 24px); transform:none; }
+  .mobile-family-switcher .person { position:relative; z-index:1; width:var(--person-chip-size); min-width:var(--person-chip-size); height:78px; flex:0 0 var(--person-chip-size); margin:0; padding:4px; justify-content:center; border:0; background:transparent; box-shadow:none; backdrop-filter:none; transition:transform .15s; }
+  .mobile-family-switcher[data-family-count="5"], .mobile-family-switcher[data-family-count="6"] { gap:0; }
+  .mobile-family-switcher[data-family-count="5"] .person+.person { margin-left:-8px; }
+  .mobile-family-switcher[data-family-count="6"] .person+.person { margin-left:-21px; }
+  .mobile-family-switcher .person.active { z-index:20; transform:translateY(4px) scale(1.05); background:transparent; box-shadow:none; }
   .mobile-family-switcher .person-info, .mobile-family-switcher .shortcut { display:none; }
-  .mobile-family-switcher .portrait { width:calc(var(--person-chip-size) - 12px); height:auto; aspect-ratio:6/7; }
-  .mobile-family-switcher .person.active .portrait { outline:2px solid #e7f8ad; outline-offset:1px; }
+  .mobile-family-switcher .portrait { width:calc(var(--person-chip-size) - 10px); height:68px; max-height:68px; object-fit:contain; border:2px solid rgba(209,233,151,.58); border-radius:14px; background:rgba(8,18,13,.72); box-shadow:0 3px 10px rgba(0,0,0,.36); }
+  .mobile-family-switcher .person.active .portrait { border-color:#e7f8ad; outline:2px solid rgba(209,233,151,.75); outline-offset:2px; box-shadow:0 5px 16px rgba(0,0,0,.55),0 0 12px rgba(209,233,151,.28); }
   .mobile-game-toolbar #score-counters { margin-right:auto; gap:5px; }
   .mobile-game-toolbar #money-counter, .mobile-game-toolbar #bond-counter { position:static; padding:4px 7px 4px 5px; gap:5px; opacity:.96; }
   .mobile-game-toolbar .counter-icon { width:22px; height:22px; flex-basis:22px; }
@@ -29,14 +32,29 @@
   .mobile-game-shell .touch-controls { position:absolute; z-index:15; inset:auto 0 0; display:flex!important; align-items:end; justify-content:space-between; gap:12px; padding:12px max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); border:0; background:linear-gradient(transparent,rgba(8,18,13,.84)); pointer-events:none; }
   .mobile-game-shell .touch-controls>* { pointer-events:auto; }
   .mobile-game-shell .joystick { width:112px; height:112px; background:rgba(26,40,31,.82); }
+  .mobile-game-shell .joystick-area small { color:#cbd8ba; font-size:9px; letter-spacing:.5px; }
+  .mobile-game-shell .touch-controls.driving .joystick { border-color:#d1e997; background:rgba(31,48,36,.94); }
+  .mobile-game-shell .touch-controls.driving .joystick-arrows { inset:0; display:grid; place-items:center; color:#dff4aa; font-size:20px; line-height:1; }
+  .mobile-game-shell .touch-controls.driving .joystick-knob { width:38px; height:56px; left:calc(50% - 19px); top:calc(50% - 28px); border-radius:12px; }
+  .drive-pedals { display:none; }
+  .mobile-game-shell .touch-controls.driving .drive-pedals { position:absolute; right:max(12px,env(safe-area-inset-right)); bottom:max(12px,env(safe-area-inset-bottom)); display:flex; gap:10px; pointer-events:auto; }
+  .drive-pedals button { display:flex; width:76px; height:76px; flex-direction:column; align-items:center; justify-content:center; gap:2px; color:#edf1db; background:rgba(43,56,38,.94); border:2px solid #718667; border-radius:14px; touch-action:none; user-select:none; }
+  .drive-pedals button b { font-size:22px; line-height:1; }
+  .drive-pedals button span { font-size:9px; font-weight:700; letter-spacing:.7px; }
+  .drive-pedals #drive-gas { color:#17231e; background:#d1e997; border-color:#e8f8bb; }
+  .drive-pedals #drive-brake { color:#ffe2d3; background:#68483e; border-color:#aa7160; }
+  .drive-pedals button.held { transform:translateY(2px) scale(.96); filter:brightness(1.18); }
   .mobile-game-shell .touch-actions { position:absolute; right:max(12px,env(safe-area-inset-right)); bottom:max(12px,env(safe-area-inset-bottom)); width:min(50vw,190px); }
   .mobile-game-shell .touch-actions button { min-height:48px; background:rgba(43,56,38,.92); }
+  .mobile-game-shell .touch-controls.driving .touch-actions { right:max(12px,env(safe-area-inset-right)); bottom:max(104px,calc(env(safe-area-inset-bottom) + 96px)); width:162px; }
+  .mobile-game-shell .touch-controls.driving .touch-actions button { min-height:40px; color:#dbe6cf; background:rgba(18,29,23,.9); border-color:#536650; font-size:10px; }
   .mobile-game-shell .toast { position:absolute!important; z-index:11; top:70px!important; bottom:auto!important; left:50%!important; width:max-content!important; max-width:calc(100vw - 24px)!important; min-height:0!important; padding:5px 9px!important; transform:translateX(-50%)!important; border:1px solid rgba(97,115,86,.72)!important; border-radius:999px!important; background:rgba(8,18,13,.7)!important; font-size:9px!important; line-height:1.25!important; white-space:normal!important; text-align:center!important; opacity:.82; transition:opacity .18s; }
   .mobile-game-shell .toast:empty { display:none!important; }
   .mobile-game-shell .character-dialog { z-index:14; left:max(12px,env(safe-area-inset-left)); bottom:max(138px,calc(env(safe-area-inset-bottom) + 130px)); width:min(370px,calc(100vw - 24px)); min-height:112px; padding:10px; gap:13px; background:rgba(8,18,13,.94); }
   .mobile-game-shell .character-dialog img { width:90px; height:90px; flex-basis:90px; }
   .mobile-game-shell .character-dialog strong { font-size:11px; }
   .mobile-game-shell .character-dialog p { font-size:18px; }
+  .mobile-game-shell .achievement-card { top:86px; right:max(10px,env(safe-area-inset-right)); left:max(10px,env(safe-area-inset-left)); width:auto; }
   .mobile-game-shell #pause-overlay { z-index:18; }
   .mobile-radio-toggle { position:absolute; z-index:17; right:auto; left:calc(50% - 58px); bottom:max(12px,env(safe-area-inset-bottom)); width:46px; height:46px; padding:0; color:#17231e; font-size:21px; background:#d1e997; border:1px solid #617356; border-radius:50%; box-shadow:0 3px 12px rgba(8,18,13,.45); }
   .mobile-radio-toggle:disabled { color:#91a08d; background:rgba(27,40,32,.72); opacity:.62; }
@@ -56,6 +74,8 @@
   .mobile-game-shell .touch-actions { max-width:166px; }
   .mobile-game-shell .touch-actions button { min-height:44px; padding:7px 5px; font-size:11px; }
   .mobile-game-shell .touch-actions { width:150px; }
+  .mobile-game-shell .touch-controls.driving .touch-actions { bottom:max(92px,calc(env(safe-area-inset-bottom) + 84px)); width:142px; }
+  .drive-pedals button { width:66px; height:66px; }
   .mobile-radio-toggle { left:112px; bottom:max(12px,env(safe-area-inset-bottom)); }
   .mobile-game-shell .radio-panel { width:164px; bottom:max(64px,calc(env(safe-area-inset-bottom) + 54px)); }
 }

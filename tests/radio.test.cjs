@@ -10,6 +10,12 @@ function element(id){
 function param(){return {value:0,setValueAtTime(v,t){assert(Number.isFinite(v)&&Number.isFinite(t))},linearRampToValueAtTime(v,t){assert(Number.isFinite(v)&&Number.isFinite(t))},exponentialRampToValueAtTime(v,t){assert(v>0&&Number.isFinite(t))},setTargetAtTime(){},cancelScheduledValues(){}}}
 function node(){return {connect(){},disconnect(){},gain:param(),frequency:param(),Q:param(),start(){},stop(){}}}
 let audioContext;
+let mediaPlayer;
+class Audio{
+  constructor(src){this.src=src;this.paused=true;this.currentTime=0;this.volume=1;this.loop=false;this.playCount=0;this.pauseCount=0;mediaPlayer=this}
+  play(){this.paused=false;this.playCount++;return Promise.resolve()}
+  pause(){this.paused=true;this.pauseCount++}
+}
 class AudioContext{
   constructor(){audioContext=this;this.currentTime=0;this.sampleRate=8000;this.state='running';this.destination={}}
   createGain(){return node()}
@@ -21,9 +27,10 @@ class AudioContext{
 }
 const sandbox={console,localStorage:{getItem:()=>null,setItem(){}},Image:class{},HTMLInputElement:class{},
   performance:{now:()=>0},requestAnimationFrame(){},
-  window:{AudioContext,matchMedia:()=>({matches:true}),addEventListener(event,handler){if(!windowEvents.has(event))windowEvents.set(event,[]);windowEvents.get(event).push(handler)}},
+  window:{AudioContext,Audio,matchMedia:()=>({matches:true}),addEventListener(event,handler){if(!windowEvents.has(event))windowEvents.set(event,[]);windowEvents.get(event).push(handler)}},
   document:{hidden:false,getElementById:element,createElement:()=>element('new'+elements.size),querySelector:()=>element('panel'),querySelectorAll:()=>[],
     addEventListener(event,handler){if(!documentEvents.has(event))documentEvents.set(event,[]);documentEvents.get(event).push(handler)}}};
+sandbox.window.clearTimeout=()=>{};sandbox.window.setTimeout=handler=>{sandbox.pendingTimeout=handler;return 1};
 vm.createContext(sandbox);
 const run=code=>vm.runInContext(code,sandbox);
 for(const file of ['audio.js','game.js','mobile.js','radio.js'])run(fs.readFileSync(path.join(__dirname,'..',file),'utf8'));
@@ -44,8 +51,14 @@ const voices=oscillators.filter(n=>n.started>0);assert(voices.length>=4,'Music s
 element('radio-next').onclick();assert.equal(run('gameAudio.radioState().index'),1);
 assert(voices.every(n=>n.stopped<=audioContext.currentTime+.04),'Track change stops queued old notes');
 run('gameAudio.update(.016,audioState)');
-element('radio-next').onclick();element('radio-next').onclick();assert.equal(run('gameAudio.radioState().index'),0);
-element('radio-prev').onclick();assert.equal(run('gameAudio.radioState().index'),2);
+for(let i=0;i<5;i++)element('radio-next').onclick();
+assert.equal(run('gameAudio.radioState().index'),6);assert.equal(run('gameAudio.radioState().count'),7);assert.equal(run('gameAudio.radioState().id'),'liberian-girl');
+run('gameAudio.update(.016,audioState);update(.016)');
+assert.equal(mediaPlayer.src,'music/liberian-girl.ogg');assert.equal(mediaPlayer.loop,true);assert.equal(mediaPlayer.paused,false,'The OGG track starts and loops while the radio is on');
+assert.equal(run('unlockedAchievements.liberianGirl'),true,'Finding Liberian Girl unlocks the Michael Jackson achievement');
+element('radio-next').onclick();assert.equal(run('gameAudio.radioState().index'),0,'Next wraps from the OGG track to the first station');
+element('radio-prev').onclick();assert.equal(run('gameAudio.radioState().index'),6,'Previous wraps back to the final OGG track');
+element('radio-next').onclick();element('radio-next').onclick();element('radio-next').onclick();assert.equal(run('gameAudio.radioState().index'),2);
 for(let i=0;i<200;i++){audioContext.currentTime+=.1;run('gameAudio.update(.1,audioState)')}
 assert(oscillators.length>50,'Music continues across repeated loops');
 const latest=oscillators.at(-1);state.paused=true;run('gameAudio.update(.016,audioState)');
@@ -64,4 +77,4 @@ assert.equal(element('radio-power').disabled,true);
 run("operateRadio('power')");assert.equal(run('gameAudio.radioState().on'),true,'Remote radio operation is blocked');
 run('family[0].x=30;family[0].y=-45;interact();update(.016)');element('radio-power').onclick();
 assert.equal(run('gameAudio.radioState().on'),false);
-console.log('OK: reachable seat, occupancy, passenger-only controls, three tracks, looping, note cancellation, pause, mute, hidden page and power.');
+console.log('OK: reachable seat, occupancy, passenger-only controls, seven tracks, OGG looping, achievement, pause, mute, hidden page and power.');

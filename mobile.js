@@ -5,30 +5,43 @@
   const controls = document.createElement('section');
   controls.className = 'touch-controls';
   controls.setAttribute('aria-label', 'Sterowanie dotykowe');
-  controls.innerHTML = `<div class="joystick-area"><div class="joystick" id="joystick" role="button" aria-label="Joystick ruchu"><span class="joystick-arrows">▲<br>◀&nbsp;&nbsp;▶<br>▼</span><span class="joystick-knob"></span></div></div><div class="touch-actions"><button id="touch-interact" type="button">Wstań</button></div><button id="touch-pause" type="button" aria-label="Pauza">Ⅱ</button>`;
+  controls.innerHTML = `<div class="joystick-area"><div class="joystick" id="joystick" role="button" aria-label="Joystick ruchu"><span class="joystick-arrows">▲<br>◀&nbsp;&nbsp;▶<br>▼</span><span class="joystick-knob"></span></div><small id="joystick-label">Ruch postaci</small></div><div class="drive-pedals" aria-label="Pedały samochodu"><button id="drive-gas" type="button"><b>▲</b><span>GAZ</span></button><button id="drive-brake" type="button"><b>▼</b><span>HAMULEC</span></button></div><div class="touch-actions"><button id="touch-interact" type="button">Wstań</button></div><button id="touch-pause" type="button" aria-label="Pauza">Ⅱ</button>`;
   panel.append(controls);
   const joystick = document.getElementById('joystick');
   const knob = joystick.querySelector('.joystick-knob');
   const interactButton = document.getElementById('touch-interact');
   const pauseButton = document.getElementById('touch-pause');
+  const gasButton = document.getElementById('drive-gas');
+  const brakeButton = document.getElementById('drive-brake');
+  const joystickArrows = joystick.querySelector('.joystick-arrows');
+  const joystickLabel = document.getElementById('joystick-label');
   let joystickPointer = null;
   const joystickKeys = new Set();
+  const pedalPointers = new Map();
   function clearJoystick() { joystickKeys.forEach(key => touchKeys.delete(key)); joystickKeys.clear(); knob.style.transform = 'translate(0px, 0px)'; joystickPointer = null; }
+  function clearPedals() { pedalPointers.forEach((key,pointerId)=>{ touchKeys.delete(key); const button=key==='w'?gasButton:brakeButton; button.classList.remove('held'); if(button.hasPointerCapture?.(pointerId))button.releasePointerCapture(pointerId); }); pedalPointers.clear(); }
   function setJoystick(event) {
     const box = joystick.getBoundingClientRect();
     const x = Math.max(-1, Math.min(1, (event.clientX - box.left - box.width / 2) / (box.width / 2)));
     const y = Math.max(-1, Math.min(1, (event.clientY - box.top - box.height / 2) / (box.height / 2)));
     joystickKeys.forEach(key => touchKeys.delete(key)); joystickKeys.clear();
     if (Math.abs(x) > .24) joystickKeys.add(x > 0 ? 'd' : 'a');
-    if (Math.abs(y) > .24) joystickKeys.add(y > 0 ? 's' : 'w');
+    if (mode !== 'driving' && Math.abs(y) > .24) joystickKeys.add(y > 0 ? 's' : 'w');
     joystickKeys.forEach(key => touchKeys.add(key));
-    knob.style.transform = `translate(${Math.round(x * 27)}px, ${Math.round(y * 27)}px)`;
+    knob.style.transform = `translate(${Math.round(x * 27)}px, ${mode === 'driving' ? 0 : Math.round(y * 27)}px)`;
   }
   joystick.addEventListener('pointerdown', event => { if (paused || joystickPointer !== null || event.button !== 0) return; event.preventDefault(); joystickPointer = event.pointerId; joystick.setPointerCapture?.(event.pointerId); setJoystick(event); });
   joystick.addEventListener('pointermove', event => { if (event.pointerId === joystickPointer) setJoystick(event); });
   for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) joystick.addEventListener(type, event => { if (event.pointerId === joystickPointer) clearJoystick(); });
-  window.resetTouchControls = () => { clearJoystick(); };
-  window.updateTouchControls = () => { interactButton.textContent = interactionLabel(); interactButton.disabled = paused || interactionUnavailable(); pauseButton.textContent = paused ? '▶' : 'Ⅱ'; pauseButton.setAttribute('aria-label',paused?'Wznów':'Pauza'); };
+  function bindPedal(button,key){
+    button.addEventListener('pointerdown',event=>{if(paused||mode!=='driving'||event.button!==0)return;event.preventDefault();pedalPointers.set(event.pointerId,key);touchKeys.add(key);button.classList.add('held');button.setPointerCapture?.(event.pointerId)});
+    for(const type of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(type,event=>{if(pedalPointers.get(event.pointerId)!==key)return;pedalPointers.delete(event.pointerId);touchKeys.delete(key);button.classList.remove('held')});
+  }
+  bindPedal(gasButton,'w');bindPedal(brakeButton,'s');
+  window.resetTouchControls = () => { clearJoystick();clearPedals(); };
+  window.updateTouchControls = () => {
+    const driving=mode==='driving';controls.classList.toggle('driving',driving);interactButton.textContent=interactionLabel();interactButton.disabled=paused||interactionUnavailable();gasButton.disabled=paused||!driving;brakeButton.disabled=paused||!driving;joystick.setAttribute('aria-label',driving?'Kierownica: skręt w lewo i prawo':'Joystick ruchu');joystickArrows.innerHTML=driving?'◀&nbsp;&nbsp;&nbsp;▶':'▲<br>◀&nbsp;&nbsp;▶<br>▼';joystickLabel.textContent=driving?'Kierownica':'Ruch postaci';pauseButton.textContent=paused?'▶':'Ⅱ';pauseButton.setAttribute('aria-label',paused?'Wznów':'Pauza');
+  };
   interactButton.onclick = interact;
   pauseButton.onclick = togglePause;
   window.addEventListener('resize', window.resetTouchControls, { passive: true });

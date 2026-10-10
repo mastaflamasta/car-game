@@ -24,6 +24,7 @@ const sandbox={console,document:{hidden:false,getElementById:element,
   querySelectorAll:()=>[],addEventListener:(event,handler)=>documentEvents.set(event,handler)},
   window:{matchMedia:()=>({matches:true}),addEventListener:(event,handler)=>windowEvents.set(event,handler)},
   Image:class{},HTMLInputElement:class{},performance:{now:()=>0},requestAnimationFrame(){},gameAudio:{update(){},radioState:()=>({on:false})}};
+sandbox.window.clearTimeout=()=>{};sandbox.window.setTimeout=handler=>{sandbox.pendingTimeout=handler;return 1};
 vm.createContext(sandbox);
 for(const file of ['game.js','mobile.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'..',file),'utf8'),sandbox);
 const run=code=>vm.runInContext(code,sandbox);
@@ -57,14 +58,17 @@ assert.equal(element('touch-interact').textContent,'Przejmij kierownicę');
 element('touch-interact').onclick();run('update(.016)');
 assert.equal(run('mode'),'driving');
 assert.equal(element('touch-interact').textContent,'Wróć do wnętrza');
+element('drive-gas').fire('pointerdown',pointer(30,58,58));
 stick.fire('pointerdown',pointer(3,90,26));
 const driveSpeed=run('car.speed'),driveAngle=run('car.angle');run('update(.1)');
-assert(run('car.speed')>driveSpeed,'Pushing the joystick up accelerates the car');
-assert(run('car.angle')>driveAngle,'Pushing the joystick right turns the moving car');
+assert(run('car.speed')>driveSpeed,'Holding the separate gas pedal accelerates the car');
+assert(run('car.angle')>driveAngle,'The horizontal steering control turns while gas is held');
 stick.fire('pointerup',pointer(3,90,26));
+element('drive-gas').fire('pointerup',pointer(30,58,58));
 assert.equal(run('touchKeys.size'),0);
-stick.fire('pointerdown',pointer(4,58,90));const speedBeforeBrake=run('car.speed');run('update(.1)');
-assert(run('car.speed')<speedBeforeBrake,'Pulling the joystick down brakes the car');stick.fire('pointerup',pointer(4,58,90));
+stick.fire('pointerdown',pointer(4,58,90));assert.equal(run("touchKeys.has('s')"),false,'Vertical steering movement does not operate the pedals');stick.fire('pointerup',pointer(4,58,90));
+element('drive-brake').fire('pointerdown',pointer(40,58,58));const speedBeforeBrake=run('car.speed');run('update(.1)');
+assert(run('car.speed')<speedBeforeBrake,'Holding the separate brake pedal slows the car');element('drive-brake').fire('pointerup',pointer(40,58,58));
 
 stick.fire('pointerdown',pointer(5,58,26));
 element('touch-pause').onclick();
@@ -108,8 +112,12 @@ run('car.x=760;car.y=-230;interact()');assert.equal(run('family[4].aboard'),true
 assert.equal(run('family[4].station'),4,'The second picked-up child uses the second couch seat');
 run('car.x=family[5].pickup.x;car.y=family[5].pickup.y');assert.equal(run('interactionLabel()'),'Zabierz Kasię','Kasia can be approached in the city');
 run('interact()');assert.equal(run('family[5].aboard'),false,'Kasia refuses to enter the vehicle');
-assert(run("kasiaDialogMessages.includes(document.getElementById('character-dialog-message').textContent)"),'Kasia gets a random refusal message');
-assert(element('character-dialog-image').src.endsWith('kolazanka-kasia-pixel.png'),'The dialog always uses Kasia\'s pixel portrait');
+assert(run("kasiaDialogMessages.includes(document.getElementById('character-dialog-message').textContent)"),'Kasia gets one of her refusal messages');
+assert(element('character-dialog-image').src.endsWith('kolazanka-kasia-pixel-naburmuszona.png'),'A negative reaction uses Kasia\'s upset pixel portrait');
+run('interact();interact();interact()');assert.equal(run('family[5].aboard'),false,'Kasia refuses exactly four times');
+run('interact()');assert.equal(run('family[5].aboard'),true,'Kasia accepts the fifth invitation');
+assert.equal(run('unlockedAchievements.kasia'),true,'Picking up Kasia unlocks her achievement');
+assert.equal(element('achievement-card').hidden,false,'An unlocked achievement opens the slide-in card');
 run('updateCharacterDialog(4)');assert.equal(element('character-dialog').hidden,true,'The character dialog disappears after a moment');
 assert.equal(run('nearestWaitingFamily()'),undefined,'Kasia is not treated as a missing family mission target');
 assert.deepEqual(Array.from(run('seatedFamilyInDrawOrder().filter(p=>p.station>=3).map(p=>p.station)')),[3,4],'The lower couch occupant is drawn last and stays in front');
@@ -124,6 +132,9 @@ assert.equal(run('money'),moneyWithoutWorkers+.25,'An empty closeness bar produc
 assert(run('coinParticles.length')>0,'Working at a computer emits a coin animation');
 run('family[0].closeness=50');const moneyAtHalfBond=run('money');run('update(.25)');assert.equal(run('money'),moneyAtHalfBond+.5,'A half-filled closeness bar produces money at standard speed');
 run('family[0].closeness=100');const moneyAtFullBond=run('money');run('update(.25)');assert.equal(run('money'),moneyAtFullBond+.75,'A full closeness bar produces money faster');
+run("[['Nela',0],['Tosia',1],['Łucja',2]].forEach(([name,station])=>{const p=family.find(member=>member.name===name);p.aboard=true;p.room='car';p.seated=true;p.passenger=false;p.station=station});updateEconomy(.01)");
+assert.equal(run('unlockedAchievements.daughters'),true,'All three daughters working at computers unlock their achievement');
+run("family.slice(2).forEach(p=>{p.aboard=false;p.room='outside'})");
 run("family.forEach(p=>{p.seated=false;p.passenger=false;p.closeness=0});selected=0;family[0].x=0;family[0].y=30;family[1].x=16;family[1].y=30;bond=0;heartParticles.length=0");
 assert.equal(run('interactionLabel()'),'Przytul','Nearby family members can hug');
 run('interact()');assert.equal(run('bond'),1,'A family interaction increases the bond counter');
@@ -150,7 +161,7 @@ run('interact()');assert.equal(element('board-editor').hidden,false,'Any person 
 run("setBoardTool('sponge')");assert.equal(run('boardTool'),'sponge','The sponge can be selected for partial erasing');
 run('boardCloseButton.onclick()');assert.equal(element('board-editor').hidden,true,'The on-screen button closes the board on mobile');
 run('family[0].x=0;family[0].y=-80;interact()');assert.equal(run('mode'),'interior','The top school door returns to the car');
-run('family[0].x=48;family[0].y=30;update(.016)');assert.equal(run('interactionLabel()'),'Wyjdź z samochodu','The radio-side door uses the standard action');
+run('family[0].x=48;family[0].y=-40;update(.016)');assert.equal(run('interactionLabel()'),'Wyjdź z samochodu','The door beside the radio passenger seat uses the standard action');
 assert.equal(element('touch-interact').textContent,'Wyjdź z samochodu','The mobile action button exposes the side-door action');
 element('touch-interact').onclick();
 assert.equal(run('family[0].aboard'),false,'A family member can leave through the side door');
@@ -158,7 +169,7 @@ assert.equal(run('selected'),1,'Another person becomes active after the selected
 assert(run('family[0].pickup&&Number.isFinite(family[0].pickup.x)&&Number.isFinite(family[0].pickup.y)'),'The person waits at a valid position on the street');
 run("mode='driving';car.x=family[0].pickup.x;car.y=family[0].pickup.y;interact()");
 assert.equal(run('family[0].aboard'),true,'A person who left the vehicle can be picked up again');
-run("family.forEach((p,i)=>{p.aboard=i===1;p.room=p.aboard?'car':'outside'});mode='interior';selected=1;family[1].seated=false;family[1].x=48;family[1].y=30");
+run("family.forEach((p,i)=>{p.aboard=i===1;p.room=p.aboard?'car':'outside'});mode='interior';selected=1;family[1].seated=false;family[1].x=48;family[1].y=-40");
 assert.equal(run('interactionUnavailable()'),true,'The side door disables the standard action for the last person');
 run('interact()');
 assert.equal(run('family[1].aboard'),true,'The last person remains in the vehicle');

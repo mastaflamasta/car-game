@@ -4,12 +4,18 @@
 const gameAudio=(()=>{
   let context,master,engine,engineGain,streetGain,noiseBuffer,musicGain;
   const tracks=[
-    {name:'Poranna trasa',bpm:104,type:'triangle',melody:[72,76,79,76,74,77,81,77,76,79,83,79,74,77,79,71],bass:[48,53,55,55]},
-    {name:'Słoneczne kilometry',bpm:128,type:'square',melody:[69,0,72,76,74,72,69,67,65,69,72,69,67,71,74,76],bass:[45,41,48,43]},
-    {name:'Noc za oknem',bpm:76,type:'sine',melody:[76,0,79,83,81,0,79,76,74,0,77,81,79,0,74,71],bass:[40,45,41,47]}
+    {id:'morning-route',name:'Poranna trasa',bpm:104,type:'triangle',melody:[72,76,79,76,74,77,81,77,76,79,83,79,74,77,79,71],bass:[48,53,55,55]},
+    {id:'sunny-miles',name:'Słoneczne kilometry',bpm:128,type:'square',melody:[69,0,72,76,74,72,69,67,65,69,72,69,67,71,74,76],bass:[45,41,48,43]},
+    {id:'night-window',name:'Noc za oknem',bpm:76,type:'sine',melody:[76,0,79,83,81,0,79,76,74,0,77,81,79,0,74,71],bass:[40,45,41,47]},
+    {id:'forest-detour',name:'Leśny objazd',bpm:92,type:'triangle',melody:[67,71,74,79,76,74,71,69,67,69,71,74,76,74,71,66],bass:[43,47,40,45]},
+    {id:'roof-rain',name:'Deszcz na dachu',bpm:68,type:'sine',melody:[74,0,77,0,81,79,77,0,72,0,76,0,79,77,74,0],bass:[38,43,45,41]},
+    {id:'family-disco',name:'Rodzinne disco',bpm:116,type:'square',melody:[64,67,71,72,71,67,64,0,69,72,76,77,76,72,69,0],bass:[40,43,45,47]},
+    {id:'liberian-girl',name:'Liberian Girl',file:'music/liberian-girl.ogg'}
   ];
   let radioOn=false,trackIndex=0,musicStep=0,nextMusicTime=0,musicActive=false;
   const musicVoices=new Set();
+  const FileAudio=window.Audio;const filePlayer=FileAudio?new FileAudio('music/liberian-girl.ogg'):null;
+  if(filePlayer){filePlayer.loop=true;filePlayer.preload='auto'}
   let muted=false,typingIn=0,lastMode='interior',lastSeats=[true,true,true];
   const button=document.getElementById('audio-toggle');
   const slider=document.getElementById('audio-volume');
@@ -69,6 +75,10 @@ const gameAudio=(()=>{
     source.connect(filter);filter.connect(gain);gain.connect(master);source.start(t,Math.random(),.04);
     source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect()};
   }
+  function achievement(){
+    start();if(!context||muted)return;
+    [523.25,659.25,783.99,1046.5].forEach((frequency,index)=>tone(frequency,index*.085));
+  }
   function stopMusic(){
     if(context)for(const voice of musicVoices){
       voice.gain.gain.cancelScheduledValues(context.currentTime);
@@ -77,6 +87,8 @@ const gameAudio=(()=>{
     }
     musicVoices.clear();musicActive=false;
   }
+  function pauseFile(reset=false){if(!filePlayer)return;filePlayer.pause();if(reset)try{filePlayer.currentTime=0}catch{}}
+  function playFile(){if(!filePlayer||!radioOn||tracks[trackIndex].id!=='liberian-girl')return;filePlayer.loop=true;filePlayer.volume=muted?0:Math.min(1,volume/100*.78);if(!filePlayer.paused)return;const promise=filePlayer.play();promise?.catch?.(()=>{})}
   function musicNote(note,t,duration,type,level){
     if(!note)return;
     const osc=context.createOscillator(),gain=context.createGain(),voice={osc,gain};
@@ -88,8 +100,11 @@ const gameAudio=(()=>{
     osc.start(t);osc.stop(t+duration+.02);
   }
   function updateMusic(active){
-    if(!active||!radioOn){if(musicActive)stopMusic();return}
-    const track=tracks[trackIndex],stepDuration=60/track.bpm/2;
+    const track=tracks[trackIndex];
+    if(!active||!radioOn){if(musicActive)stopMusic();pauseFile();return}
+    if(track.file){if(musicActive)stopMusic();playFile();return}
+    pauseFile();
+    const stepDuration=60/track.bpm/2;
     if(!musicActive){nextMusicTime=context.currentTime+.025;musicActive=true}
     // Schedule a short horizon on the audio clock, independent of frame rate.
     if(nextMusicTime<context.currentTime)nextMusicTime=context.currentTime+.025;
@@ -101,13 +116,14 @@ const gameAudio=(()=>{
       musicStep++;nextMusicTime+=stepDuration;
     }
   }
-  function toggleRadio(){radioOn=!radioOn;stopMusic();if(radioOn){musicStep=0;start()}return radioOn}
-  function changeTrack(direction){trackIndex=(trackIndex+direction+tracks.length)%tracks.length;musicStep=0;stopMusic();if(radioOn)start()}
-  function radioState(){return {on:radioOn,index:trackIndex,count:tracks.length,name:tracks[trackIndex].name,muted,available:!!(window.AudioContext||window.webkitAudioContext)}}
+  function toggleRadio(){radioOn=!radioOn;stopMusic();if(!radioOn)pauseFile(true);else{musicStep=0;start();playFile()}return radioOn}
+  function changeTrack(direction){trackIndex=(trackIndex+direction+tracks.length)%tracks.length;musicStep=0;stopMusic();pauseFile(true);if(radioOn){start();playFile()}}
+  function radioState(){const track=tracks[trackIndex];return {on:radioOn,index:trackIndex,count:tracks.length,id:track.id,name:track.name,file:!!track.file,muted,available:!!(window.AudioContext||window.webkitAudioContext)}}
   function update(dt,state){
     const switched=state.mode!==lastMode;
     const seatChanged=state.seats.some((seat,i)=>seat!==lastSeats[i]);
     lastMode=state.mode;lastSeats=[...state.seats];
+    if(filePlayer)filePlayer.volume=muted?0:Math.min(1,volume/100*.78);
     if(!context)return;
     const active=!muted&&!state.paused&&!document.hidden;
     master.gain.setTargetAtTime(active?volume/100*2.5:0,context.currentTime,.045);
@@ -126,11 +142,11 @@ const gameAudio=(()=>{
       if(state.mode==='interior'&&workers&&Math.random()<workers/3)keyClick();
     }
   }
-  button.onclick=()=>{muted=!muted;buttonState();if(!muted)start();else{stopMusic();if(master)master.gain.setTargetAtTime(0,context.currentTime,.03)}};
+  button.onclick=()=>{muted=!muted;buttonState();if(!muted){start();playFile()}else{stopMusic();pauseFile();if(master)master.gain.setTargetAtTime(0,context.currentTime,.03)}};
   slider.oninput=()=>{volume=Number(slider.value);volumeState();try{localStorage.setItem('roadfamily-volume',String(volume))}catch{};start()};
   // Browsers allow playback only after an explicit user gesture.
   window.addEventListener('pointerdown',start);
   window.addEventListener('keydown',start);
-  document.addEventListener('visibilitychange',()=>{if(document.hidden){stopMusic();if(master)master.gain.setTargetAtTime(0,context.currentTime,.03)}});
-  buttonState();return {update,toggleRadio,changeTrack,radioState};
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){stopMusic();pauseFile();if(master)master.gain.setTargetAtTime(0,context.currentTime,.03)}});
+  buttonState();return {update,toggleRadio,changeTrack,radioState,achievement};
 })();
