@@ -9,6 +9,10 @@ Otwórz `index.html` w przeglądarce. Gra nie wymaga instalowania zależności a
 - **WASD / strzałki**: chodzenie we wnętrzu; w widoku miasta W/S sterują gazem i hamulcem, a A/D skręcają.
 - **P**: pauza.
 
+Dolne drzwi samochodu prowadzą teraz do szkolnej przyczepki — podejdź do nich i naciśnij **E**. Nowe drzwi na prawej ścianie, obok fotela z radiem, prowadzą na zewnątrz za pomocą standardowej akcji **E** lub mobilnego przycisku interakcji.
+
+W szkolnej przyczepce znajdują się dwa rzędy po trzy jednoosobowe ławki, stolik nauczyciela oraz tablica kredowa. Przy ławkach i miejscu nauczyciela siada się klawiszem **E**. Każda osoba może podejść do tablicy, nacisnąć **E**, rysować białą kredą, wpisywać tekst i ścierać wybrane fragmenty gąbką. **Esc** zapisuje tablicę i wraca do klasy; kolejna osoba zobaczy zapisaną zawartość.
+
 Radio znajduje się na desce rozdzielczej przy przednim prawym fotelu pasażera. Wstań od stanowiska, podejdź do tego fotela i użyj **E** lub **Usiądź przy radiu**. Z fotela obsługujesz przyciski radia pod grą: poprzedni/następny utwór oraz włącznik. Na klawiaturze działa też **R** (włącz/wyłącz) i **[ / ]** (utwór). **E / Wstań z fotela** pozwala wrócić do spacerowania. Fotel zajmuje jedna osoba naraz; aby obsługiwać radio, wybierz siedzącego na nim pasażera.
 
 Trzy własne instrumentalne utwory — „Poranna trasa”, „Słoneczne kilometry” i „Noc za oknem” — są generowane lokalnie przez Web Audio i zapętlane. Radio początkowo jest wyłączone. Muzyka gra dalej po odejściu pasażera i podczas jazdy; pauza, ukrycie karty i wyciszenie dźwięku zatrzymują odtwarzanie. Suwak głośności w nagłówku obejmuje również muzykę.
