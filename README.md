@@ -11,11 +11,15 @@ Otwórz `index.html` w przeglądarce. Gra nie wymaga instalowania zależności a
 
 Dolne drzwi samochodu prowadzą teraz do szkolnej przyczepki — podejdź do nich i naciśnij **E**. Nowe drzwi na prawej ścianie, obok fotela z radiem, prowadzą na zewnątrz za pomocą standardowej akcji **E** lub mobilnego przycisku interakcji.
 
+Każda osoba może wysiąść. Gdy ostatnia osoba opuszcza samochód, auto zatrzymuje się i gra przechodzi do trybu spaceru po mieście. Postacie poruszają się po mapie standardowym joystickiem lub klawiszami WASD. Zaparkowany samochód ma własny złoty wskaźnik kierunku; po podejściu można wrócić do środka. Na mapie można znaleźć oznaczone sklepy i stacje benzynowe.
+
 W szkolnej przyczepce znajdują się dwa rzędy po trzy jednoosobowe ławki, stolik nauczyciela oraz tablica kredowa. Przy ławkach i miejscu nauczyciela siada się klawiszem **E**. Każda osoba może podejść do tablicy, nacisnąć **E**, rysować białą kredą, wpisywać tekst i ścierać wybrane fragmenty gąbką. **Esc** zapisuje tablicę i wraca do klasy; kolejna osoba zobaczy zapisaną zawartość.
 
 Radio znajduje się na desce rozdzielczej przy przednim prawym fotelu pasażera. Wstań od stanowiska, podejdź do tego fotela i użyj **E** lub **Usiądź przy radiu**. Z fotela obsługujesz przyciski radia pod grą: poprzedni/następny utwór oraz włącznik. Na klawiaturze działa też **R** (włącz/wyłącz) i **[ / ]** (utwór). **E / Wstań z fotela** pozwala wrócić do spacerowania. Fotel zajmuje jedna osoba naraz; aby obsługiwać radio, wybierz siedzącego na nim pasażera.
 
 Sześć własnych instrumentalnych utworów jest generowanych lokalnie przez Web Audio i zapętlanych. Ostatnią, siódmą pozycją jest „Liberian Girl”, odtwarzana w pętli z pliku `music/liberian-girl.ogg`. Jej odnalezienie odblokowuje specjalny achievement. Radio początkowo jest wyłączone. Muzyka gra dalej po odejściu pasażera i podczas jazdy; pauza, ukrycie karty i wyciszenie dźwięku zatrzymują odtwarzanie. Suwak głośności w nagłówku obejmuje również muzykę z pliku.
+
+Pogoda czasem zmienia się na deszczową. Podczas jazdy i spaceru deszcz jest widoczny jako pikselowe smugi oraz krótkie rozpryski, a we wnętrzu samochodu słychać krople uderzające o dach. Okresy bez deszczu są wyraźnie dłuższe od samych opadów.
 
 Na telefonie i urządzeniach z ekranem dotykowym pod grą pojawia się joystick i przyciski:
 
@@ -32,9 +36,13 @@ Kierowca automatycznie jedzie ulicą, gdy rodzina jest we wnętrzu. W samochodzi
 
 Każda osoba siedząca przy jednym z trzech komputerów zarabia 2 monety na sekundę. Nad aktywnym stanowiskiem pojawiają się krótkie animacje monet, a licznik **KASA** u góry ekranu pokazuje wspólny wynik. Fotel radia, kanapa, chodzenie i prowadzenie samochodu nie generują pieniędzy. Jeśli nikt nie pracuje przy komputerze, licznik się nie zwiększa.
 
+Osoby w samochodzie od czasu do czasu pokazują krótki komentarz zależny od zajmowanego miejsca. Pracownik może też losowo zasnąć przy komputerze: jego sylwetka opuszcza się, a nad głową pojawia się `Z`. Śpiąca osoba nie zarabia pieniędzy. Należy podejść inną postacią i użyć interakcji **Obudź**, aby wróciła do pracy.
+
 ## Achievementy
 
 Achievementy pojawiają się jako karta wjeżdżająca z prawej strony wraz z krótkim dźwiękiem. Kliknięcie w ekran chowa kartę, a każde osiągnięcie wyświetla się tylko raz podczas jednej rozgrywki. Restart gry rozpoczyna nową rozgrywkę i zeruje achievementy oraz próby przekonania Kasi. Kasia odmawia wejścia do samochodu cztery razy (z naburmuszonym portretem), po czym za piątym razem dołącza do rodziny i odblokowuje achievement **Kasia przyjęta do rodziny (Spotify)**. Drugi achievement odblokowuje się, gdy Nela, Tosia i Łucja jednocześnie pracują przy trzech komputerach.
+
+Licznik z pucharem pokazuje liczbę zdobytych achievementów. Dostępne są także osiągnięcia za zebranie całej rodziny, jednoczesną pracę rodziców, zdobycie 2000 monet, prowadzenie przez każdą osobę, pięć kolizji oraz dwadzieścia przytuleń jednego dziecka.
 
 Tosia i Łucja na początku czekają w dwóch miejscach przy drodze. Po przejęciu kierownicy podjedź blisko jednej z nich i użyj **E** albo mobilnego przycisku **Zabierz Tosię / Łucję**. Po zabraniu pojawi się jej karta wyboru, a dziewczynka zajmie wolne miejsce na dwuosobowej kanapie. Wszystkie osoby mogą wstawać i zajmować dowolne wolne miejsce; zajęte stanowiska są blokowane.
 Podczas jazdy kompas na krawędzi ekranu pokazuje kierunek do najbliższej oczekującej osoby, jej zdjęcie i przybliżoną odległość.

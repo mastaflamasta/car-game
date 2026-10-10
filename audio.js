@@ -2,7 +2,7 @@
 
 // All sounds are generated locally; no audio files or downloads are needed.
 const gameAudio=(()=>{
-  let context,master,engine,engineGain,streetGain,noiseBuffer,musicGain;
+  let context,master,engine,engineGain,streetGain,rainGain,noiseBuffer,musicGain;
   const tracks=[
     {id:'morning-route',name:'Poranna trasa',bpm:104,type:'triangle',melody:[72,76,79,76,74,77,81,77,76,79,83,79,74,77,79,71],bass:[48,53,55,55]},
     {id:'sunny-miles',name:'Słoneczne kilometry',bpm:128,type:'square',melody:[69,0,72,76,74,72,69,67,65,69,72,69,67,71,74,76],bass:[45,41,48,43]},
@@ -57,6 +57,7 @@ const gameAudio=(()=>{
         const streetFilter=context.createBiquadFilter();streetFilter.type='lowpass';streetFilter.frequency.value=750;
         streetGain=context.createGain();streetGain.gain.value=.018;
         street.connect(streetFilter);streetFilter.connect(streetGain);streetGain.connect(master);street.start();
+        const rain=context.createBufferSource();rain.buffer=noiseBuffer;rain.loop=true;const rainFilter=context.createBiquadFilter();rainFilter.type='bandpass';rainFilter.frequency.value=3100;rainFilter.Q.value=.55;rainGain=context.createGain();rainGain.gain.value=0;rain.connect(rainFilter);rainFilter.connect(rainGain);rainGain.connect(master);rain.start();
       }
       if(context.state==='suspended')context.resume().catch(()=>{});
     }catch(error){button.disabled=true;button.textContent='Dźwięk niedostępny';}
@@ -133,6 +134,8 @@ const gameAudio=(()=>{
     engine.frequency.setTargetAtTime(38+speed*95,context.currentTime,.12);
     engineGain.gain.setTargetAtTime((state.mode==='interior'?.09:.14)+speed*.045,context.currentTime,.12);
     streetGain.gain.setTargetAtTime((state.mode==='interior'?.012:.027)+speed*.024,context.currentTime,.2);
+    const rainLevel=!state.raining?0:state.mode==='interior'||state.mode==='driving'?.075:state.mode==='outside'?.025:.035;
+    rainGain.gain.setTargetAtTime(rainLevel,context.currentTime,.25);
     if(switched){tone(state.mode==='driving'?440:660);tone(state.mode==='driving'?660:440,.12)}
     else if(seatChanged)tone(280);
     typingIn-=dt;
