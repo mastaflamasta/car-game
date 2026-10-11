@@ -49,8 +49,11 @@ const voices=oscillators.filter(n=>n.started>0);assert(voices.length>=4,'Music s
 element('radio-next').onclick();assert.equal(run('gameAudio.radioState().index'),1);
 assert(voices.every(n=>n.stopped<=audioContext.currentTime+.04),'Track change stops queued old notes');
 run('gameAudio.update(.016,audioState)');
+element('radio-power').onclick();assert.equal(run('gameAudio.radioState().on'),false);
 for(let i=0;i<5;i++)element('radio-next').onclick();
 assert.equal(run('gameAudio.radioState().index'),6);assert.equal(run('gameAudio.radioState().count'),7);assert.equal(run('gameAudio.radioState().id'),'liberian-girl');
+run('update(.016)');assert.equal(run('unlockedAchievements.liberianGirl'),undefined,'Selecting Liberian Girl alone does not unlock its achievement');
+element('radio-power').onclick();
 run('gameAudio.update(.016,audioState);update(.016)');
 assert.equal(mediaPlayer.src,'music/liberian-girl.ogg');assert.equal(mediaPlayer.loop,true);assert.equal(mediaPlayer.paused,false,'The OGG track starts and loops while the radio is on');
 assert.equal(run('unlockedAchievements.liberianGirl'),true,'Finding Liberian Girl unlocks the Michael Jackson achievement');

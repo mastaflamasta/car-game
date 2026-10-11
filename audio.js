@@ -119,7 +119,7 @@ const gameAudio=(()=>{
   }
   function toggleRadio(){radioOn=!radioOn;stopMusic();if(!radioOn)pauseFile(true);else{musicStep=0;start();playFile()}return radioOn}
   function changeTrack(direction){trackIndex=(trackIndex+direction+tracks.length)%tracks.length;musicStep=0;stopMusic();pauseFile(true);if(radioOn){start();playFile()}}
-  function radioState(){const track=tracks[trackIndex];return {on:radioOn,index:trackIndex,count:tracks.length,id:track.id,name:track.name,file:!!track.file,muted,available:!!(window.AudioContext||window.webkitAudioContext)}}
+  function radioState(){const track=tracks[trackIndex],playing=track.file?!!(radioOn&&!muted&&filePlayer&&!filePlayer.paused):!!(radioOn&&!muted&&musicActive);return {on:radioOn,playing,index:trackIndex,count:tracks.length,id:track.id,name:track.name,file:!!track.file,muted,available:!!(window.AudioContext||window.webkitAudioContext)}}
   function update(dt,state){
     const switched=state.mode!==lastMode;
     const seatChanged=state.seats.some((seat,i)=>seat!==lastSeats[i]);

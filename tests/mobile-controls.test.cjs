@@ -31,6 +31,11 @@ const run=code=>vm.runInContext(code,sandbox);
 const stick=element('joystick');
 const pointer=(pointerId,clientX,clientY)=>({pointerId,clientX,clientY});
 
+const initialCarY=run('car.y');run('update(.1)');assert.equal(run('car.y'),initialCarY,'The car stays still when no family member is driving');assert.equal(run('car.speed'),0);
+assert.deepEqual(Array.from(run("wrapSpeechText('Internet dziś współpracuje. Podejrzane.')")),['Internet dziś','współpracuje.','Podejrzane.'],'Speech bubbles wrap complete words instead of truncating their text');
+run('time=125');const earlyComments=Array.from(run("dynamicActivityComments(new Date('2026-10-12T07:21:00'))"));assert(earlyComments.some(text=>text.includes('2 minuty')));assert(earlyComments.some(text=>text.includes('08:00')),'Early comments mention the next full hour');const lateComments=Array.from(run("dynamicActivityComments(new Date('2026-10-12T22:37:00'))"));assert(lateComments.some(text=>text.includes('22:37')),'Late comments mention the current time');
+assert.equal(run('family.filter(p=>p.joined).length'),3,'Only family members already collected are selectable at the beginning');
+run('selected=0;selectPerson(3)');assert.equal(run('selected'),0,'A person waiting in the city cannot be selected before joining the family');
 element('touch-interact').onclick();
 run('update(.016)');
 assert.equal(run('family[0].seated'),false);
@@ -107,8 +112,9 @@ run('car.y=200');assert.equal(run('pickupIndicatorStage(streetPeopleByDistance()
 run("car.x=family[3].pickup.x-90;car.y=family[3].pickup.y");assert.equal(run('pickupIndicatorStage(streetPeopleByDistance().find(target=>target.p.name===\'Tosia\'))'),null,'The portrait indicator disappears as soon as the character itself is visible');run('car.x=410');
 run("car.x=family[3].pickup.x;car.y=family[3].pickup.y+225/zoom");assert.equal(run('pickupIndicatorStage(streetPeopleByDistance().find(target=>target.p.name===\'Tosia\'))'),null,'The indicator disappears when even part of the character sprite enters the visible viewport');
 run('car.y=650');assert.equal(run('pickupIndicatorStage(streetPeopleByDistance().find(target=>target.p.name===\'Tosia\'))'),'arrow','A distant outdoor character uses only a colored arrow');run('car.y=-50');
-run('car.x=350;car.y=650');const kasiaIndicator=run("pickupIndicatorPoint(streetPeopleByDistance().find(target=>target.p.name==='Kasia'),24)");const visibleIndicatorBounds=run('pickupIndicatorBounds(24)');assert(kasiaIndicator.x>=visibleIndicatorBounds.left&&kasiaIndicator.x<=visibleIndicatorBounds.right&&kasiaIndicator.y>=visibleIndicatorBounds.top&&kasiaIndicator.y<=visibleIndicatorBounds.bottom,'Kasia\'s arrow stays inside the cover-cropped mobile viewport');run('car.x=410;car.y=-50');
+run('car.x=350;car.y=650');const kasiaIndicator=run("pickupIndicatorPoint(streetPeopleByDistance().find(target=>target.p.name==='Kasia'),24)");const visibleIndicatorBounds=run('pickupIndicatorBounds(24)');assert(kasiaIndicator.x>=visibleIndicatorBounds.left&&kasiaIndicator.x<=visibleIndicatorBounds.right&&kasiaIndicator.y>=visibleIndicatorBounds.top&&kasiaIndicator.y<=visibleIndicatorBounds.bottom,'Kasia\'s arrow stays inside the cover-cropped mobile viewport');run('car.x=410;car.y=-50;car.speed=100');
 run('interact()');assert.equal(run('family[3].aboard'),true,'Tosia can be picked up from the map');
+assert.equal(run('unlockedAchievements.speedyPickup'),true,'Picking someone up at maximum speed unlocks the achievement');
 assert.equal(element('character-dialog').hidden,false,'Picking up a person opens the character dialog');
 assert(run("pickupDialogMessages.includes(document.getElementById('character-dialog-message').textContent)"),'A picked-up person gets a random ride message');
 assert.equal(run('family[3].station'),3,'The first picked-up child uses the first couch seat');
@@ -123,6 +129,7 @@ run('interact();interact();interact()');assert.equal(run('family[5].aboard'),fal
 run('interact()');assert.equal(run('family[5].aboard'),true,'Kasia accepts the fifth invitation');
 assert.equal(run('unlockedAchievements.kasia'),true,'Picking up Kasia unlocks her achievement');
 assert.equal(element('achievement-card').hidden,false,'An unlocked achievement opens the slide-in card');
+element('achievement-counter').onclick();assert.equal(element('achievements-modal').hidden,false,'The trophy counter opens the achievement collection');assert.match(element('achievement-list').innerHTML,/Kasia przyjęta do rodziny/);element('achievements-close').onclick();assert.equal(element('achievements-modal').hidden,true,'The collection has a working close button');
 run('updateCharacterDialog(4)');assert.equal(element('character-dialog').hidden,true,'The character dialog disappears after a moment');
 assert.equal(run('nearestWaitingFamily()'),undefined,'Kasia is not treated as a missing family mission target');
 assert.deepEqual(Array.from(run('seatedFamilyInDrawOrder().filter(p=>p.station>=3).map(p=>p.station)')),[3,4],'The lower couch occupant is drawn last and stays in front');
@@ -160,8 +167,8 @@ assert.equal(run('canWalkSchool(-37,20)'),true,'The first row interaction zone i
 assert.equal(run('canWalkSchool(37,80)'),true,'The second row interaction zone is reachable');
 run('family[0].x=-37;family[0].y=20');assert.equal(run('interactionLabel()'),'Usiądź przy ławce','The desk action appears directly beside the collision edge');
 run('interact()');assert.equal(run('family[0].schoolSeat'),0,'A school desk remembers its occupant');
-run('interact();family[0].x=-31;family[0].y=-16;interact()');assert.equal(run('family[0].teacher'),true,'A person can take the teacher role');
-run('interact();family[0].x=35;family[0].y=-23');assert.equal(run('interactionLabel()'),'Użyj tablicy','The board action appears directly beside its collision edge');
+run('interact();family[0].x=-31;family[0].y=-58;interact()');assert.equal(run('family[0].teacher'),true,'The teacher desk can be entered from its upper side');assert.equal(run('family[0].y'),-55,'The seated teacher is positioned behind the desk');
+run('interact()');assert.equal(run('family[0].x'),-8,'Standing up places the teacher beside the desk');assert.equal(run('family[0].y'),-42);run('family[0].x=35;family[0].y=-23');assert.equal(run('interactionLabel()'),'Użyj tablicy','The board action appears directly beside its collision edge');
 run('interact()');assert.equal(element('board-editor').hidden,false,'Any person in the trailer can open the chalkboard');
 run("setBoardTool('sponge')");assert.equal(run('boardTool'),'sponge','The sponge can be selected for partial erasing');
 run('boardCloseButton.onclick()');assert.equal(element('board-editor').hidden,true,'The on-screen button closes the board on mobile');
@@ -170,8 +177,14 @@ run('family[0].x=48;family[0].y=-40;update(.016)');assert.equal(run('interaction
 assert.equal(element('touch-interact').textContent,'Wyjdź z samochodu','The mobile action button exposes the side-door action');
 element('touch-interact').onclick();
 assert.equal(run('family[0].aboard'),false,'A family member can leave through the side door');
-assert.equal(run('selected'),1,'Another person becomes active after the selected person exits');
+assert.equal(run('selected'),0,'The person who exits remains active');
+assert.equal(run('mode'),'outside','Exiting immediately switches to the outdoor view');
 assert(run('family[0].pickup&&Number.isFinite(family[0].pickup.x)&&Number.isFinite(family[0].pickup.y)'),'The person waits at a valid position on the street');
+assert(run("{const dx=family[0].pickup.x-car.x,dy=family[0].pickup.y-car.y;dx*Math.cos(car.angle)+dy*Math.sin(car.angle)}")>0,'The person exits on the right-hand side of the vehicle');
+assert(Math.abs(run("{const dx=family[0].pickup.x-car.x,dy=family[0].pickup.y-car.y;-dx*Math.sin(car.angle)+dy*Math.cos(car.angle)}"))<.001,'The exit point is beside the car rather than in front of it');
+assert.equal(run('hitsPlayerCar(car.x,car.y)'),true,'The parked family car blocks a walking person');
+run('selectPerson(1)');assert.equal(run('mode'),'interior','Selecting a person still aboard switches back to the interior view');
+run('selectPerson(0)');assert.equal(run('mode'),'outside','Selecting the outdoor person switches back to the city view');
 run("mode='driving';car.x=family[0].pickup.x;car.y=family[0].pickup.y;interact()");
 assert.equal(run('family[0].aboard'),true,'A person who left the vehicle can be picked up again');
 run("family.forEach((p,i)=>{p.aboard=i===1;p.room=p.aboard?'car':'outside'});mode='interior';selected=1;family[1].seated=false;family[1].x=48;family[1].y=-40");
@@ -179,7 +192,7 @@ assert.equal(run('interactionUnavailable()'),false,'The last person can use the 
 run('interact()');
 assert.equal(run('family[1].aboard'),false,'The last person can leave the vehicle');
 assert.equal(run('mode'),'outside','Leaving an empty vehicle starts city walking mode');assert.equal(run('car.parked'),true);assert.equal(run('car.speed'),0);
-const outsideStart=run('family[1].pickup.x');run("touchKeys.add('d');update(.1);touchKeys.clear()");assert(run('family[1].pickup.x')>outsideStart,'The selected person can walk through the city');
+run('family[1].pickup.x=150;family[1].pickup.y=270');const outsideStart=run('family[1].pickup.x');run("touchKeys.add('d');update(.1);touchKeys.clear()");assert(run('family[1].pickup.x')>outsideStart,'The selected person can walk through the city');
 run('family[1].pickup.x=car.x;family[1].pickup.y=car.y;interact()');assert.equal(run('family[1].aboard'),true,'An outdoor person can return to the parked car');assert.equal(run('mode'),'interior');
 run("family[0].face={kind:'photo'};family[0].pixel={kind:'pixel'};setCharacterStyle('pixel')");
 assert.equal(run("characterArt(family[0]).kind"),'pixel','Pixel-art mode selects the transparent pixel asset');
@@ -190,5 +203,6 @@ assert.equal(run('unlockedAchievements.parentsWork'),true,'Mama and Tata working
 run('money=2000;checkProgressAchievements()');assert.equal(run('unlockedAchievements.remote2000'),true,'Two thousand coins unlock the remote-work achievement');
 run('family.forEach(p=>drivenBy.add(p.name));collisionCount=5;checkProgressAchievements()');assert.equal(run('unlockedAchievements.allDrivers'),true);assert.equal(run('unlockedAchievements.scratches'),true);
 run("hugCounts.Nela=19;hugFamily(family[0],family[2])");assert.equal(run('unlockedAchievements.favoriteChild'),true,'Twenty hugs for one child unlock the favourite-child achievement');
-run('family[1].sleeping=true');assert.equal(run('activeWorkers().includes(family[1])'),false,'A sleeping person produces no money');run('wakePerson(family[1])');assert.equal(run('family[1].sleeping'),false,'A sleeping worker can be woken and returns to work');
+run('family[1].sleeping=true');assert.equal(run('activeWorkers().includes(family[1])'),false,'A sleeping person produces no money');run('updateEconomy(.7)');assert(run('sleepParticles.length')>0,'A sleeping person emits animated sleep particles');run('wakePerson(family[1])');assert.equal(run('family[1].sleeping'),false,'A sleeping worker can be woken and returns to work');
+run("mode='interior';family[0].driving=true;car.parked=false;car.angle=.73");run('update(.1)');assert.equal(run('car.angle'),.73,'Looking inside while another person drives preserves the car heading');
 console.log('OK: walking, acceleration, braking, steering, interaction, pause, pickups, seating and keyboard.');

@@ -15,7 +15,7 @@ const schoolSeats=[
   {x:-37,y:55,label:'lewej ławce w drugim rzędzie'},{x:0,y:55,label:'środkowej ławce w drugim rzędzie'},{x:37,y:55,label:'prawej ławce w drugim rzędzie'}
 ];
 const schoolSeatZones=schoolSeats.map(seat=>({left:seat.x-17,right:seat.x+17,top:seat.y+13,bottom:seat.y+28}));
-const schoolDoorZone={left:-15,right:15,top:-91,bottom:-68},teacherZone={left:-50,right:-12,top:-24,bottom:-11},boardZone={left:11,right:53,top:-25,bottom:-11};
+const schoolDoorZone={left:-15,right:15,top:-91,bottom:-68},teacherZone={left:-50,right:-19,top:-72,bottom:-53},boardZone={left:11,right:53,top:-25,bottom:-11};
 const family=[
   {name:'Mama',pickupName:'Mamę',role:'Odpoczywa na kanapie',color:'#d88860',hair:'#9a5239',hairStyle:'bob',glasses:true,x:40,y:58,station:3,seated:true,aboard:true,closeness:0},
   {name:'Tata',pickupName:'Tatę',role:'Odpoczywa na kanapie',color:'#679b91',hair:'#423c36',hairStyle:'short',x:40,y:79,station:4,seated:true,aboard:true,closeness:0},
@@ -24,7 +24,7 @@ const family=[
   {name:'Łucja',pickupName:'Łucję',role:'Czeka na rodzinę',color:'#8aa5b2',hair:'#51352e',hairStyle:'short',glasses:true,x:0,y:0,station:null,seated:false,aboard:false,pickup:{x:760,y:-230},closeness:0},
   {name:'Kasia',pickupName:'Kasię',role:'Spaceruje po mieście',color:'#8e768f',hair:'#6b4b3a',hairStyle:'long',glasses:true,x:0,y:0,station:null,seated:false,aboard:false,boardable:false,pickup:{x:-50,y:300},closeness:0}
 ];
-family.forEach(member=>{member.room=member.aboard?'car':'outside';member.schoolSeat=null;member.teacher=false;member.sleeping=false;member.speech=null});
+family.forEach(member=>{member.room=member.aboard?'car':'outside';member.joined=member.aboard;member.schoolSeat=null;member.teacher=false;member.sleeping=false;member.speech=null;member.driving=false});
 // Each crop is measured relative to its original photograph.
 const familyPhotos=[
   {label:'Mama · Dagmara',src:'images/mama-dagmara.jpg',pixel:'images/mama-dagmara-pixel.png',pixelCrop:[.12,.02,.76,.89],crop:[.05,.025,.88,.81]},
@@ -57,7 +57,7 @@ function loadFamilyPhotos(){
 }
 let selected=0,mode='interior',zoom=2.2,roof=0,paused=false,time=0,distance=0,toastTimer=5,walked=false,taken=false;
 let money=0,lastMoneyShown=-1,bond=0,lastBondShown=-1;
-const coinParticles=[],heartParticles=[];
+const coinParticles=[],heartParticles=[],sleepParticles=[];
 let weather='clear',weatherTimer=45+Math.random()*55,nextCommentIn=16+Math.random()*18,nextSleepIn=32+Math.random()*45,collisionCooldown=0,collisionCount=0;
 const drivenBy=new Set(),hugCounts={};
 let characterDialogTimer=0;
@@ -73,7 +73,8 @@ const achievementDefinitions={
   remote2000:{title:'Praca zdalna, widok lokalny',description:'2000 monet zarobionych w drodze. Biuro z takim widokiem trudno przebić.'},
   allDrivers:{title:'Kto prowadzi ten dom?',description:'Każdy członek rodziny przejął kierownicę. Odpowiedź nadal pozostaje niejasna.'},
   scratches:{title:'To tylko rysa',description:'Pięć spotkań z przeszkodami. Lakier nabiera rodzinnego charakteru.'},
-  favoriteChild:{title:'Ulubione dziecko',description:'Dwadzieścia przytuleń dla jednego dziecka. Pozostali zaczynają coś podejrzewać.'}
+  favoriteChild:{title:'Ulubione dziecko',description:'Dwadzieścia przytuleń dla jednego dziecka. Pozostali zaczynają coś podejrzewać.'},
+  speedyPickup:{title:'Wsiadaj, nie zwalniam!',description:'Maksymalna prędkość, szybki odbiór i pasażer na pokładzie. Rozkład jazdy zatwierdziłby tylko kierowca rajdowy.'}
 };
 const unlockedAchievements={};
 let visibleAchievement=null,achievementHideTimer=0;const pendingAchievements=[];
@@ -102,6 +103,12 @@ function drawPixelHead(p,x,y){
   else{rect(x-3,y-4,1,1,line);rect(x+2,y-4,1,1,line)}
   rect(x-1,y-1,3,1,p.name==='Tata'?'#8f644f':'#b85e5a');rect(x-4,y-7,2,1,light);
 }
+function drawSleepMask(x,y){
+  rect(x-9,y-7,18,2,'#17151d');
+  rect(x-7,y-8,14,3,'#17151d');rect(x-7,y-5,6,3,'#17151d');rect(x+1,y-5,6,3,'#17151d');
+  rect(x-5,y-7,4,2,'#302b3a');rect(x+1,y-7,4,2,'#302b3a');
+  rect(x-5,y-5,3,1,'#272330');rect(x+2,y-5,3,1,'#272330');
+}
 function person(p,x,y,dir=0,walking=false){
   const step=walking?Math.sin(time*15)*2:0;
   rect(x-5,y+7,4,5+step,'#303e39');rect(x+1,y+7,4,5-step,'#303e39');
@@ -110,21 +117,24 @@ function person(p,x,y,dir=0,walking=false){
   if(art){
     ctx.save();ctx.imageSmoothingEnabled=characterStyle!=='pixel';if(characterStyle!=='pixel')ctx.imageSmoothingQuality='high';
     ctx.drawImage(art,Math.round(x-9),Math.round(y-17),18,21);ctx.restore();
+    if(p.sleeping)drawSleepMask(x,y);
     return;
   }
   drawPixelHead(p,x,y);
+  if(p.sleeping)drawSleepMask(x,y);
 }
 function familyStatus(p,i){
   if(p.room==='outside')return mode==='outside'&&i===selected?'Spaceruje po mieście':'Na zewnątrz';
   if(p.room==='school')return p.teacher?'Nauczyciel przy stoliku':p.seated&&Number.isInteger(p.schoolSeat)?'Siedzi przy '+schoolSeats[p.schoolSeat].label:'W szkolnej przyczepce';
+  if(p.driving)return'Prowadzi samochód';
   if(p.passenger)return'Pasażer · obsługuje radio';
   if(p.sleeping)return'Śpi przy komputerze';
   if(p.seated&&Number.isInteger(p.station))return'Siedzi przy '+cabinSeats[p.station].label;
-  return mode==='driving'&&i===selected?'Prowadzi samochód':'Spaceruje po wnętrzu';
+  return'Spaceruje po wnętrzu';
 }
 function buildFamily(){
   const aboard=family.map((p,i)=>({p,i})).filter(({p})=>p.aboard);
-  const displayed=mode==='outside'?family.map((p,i)=>({p,i})).filter(({p})=>p.room==='outside'):aboard;
+  const displayed=family.map((p,i)=>({p,i})).filter(({p})=>p.joined);
   const familyList=$('family');
   familyList.setAttribute('data-family-count',String(displayed.length));
   familyList.innerHTML=displayed.map(({p,i})=>`<button class="person ${i===selected?'active':''}" data-person="${i}" aria-pressed="${i===selected}"><canvas class="portrait ${characterStyle==='photo'&&p.face?'photo-portrait':'pixel-portrait'}" width="96" height="112" id="portrait-${i}" aria-hidden="true"></canvas><span class="person-info"><strong>${familyPhotos[i].label}</strong><small>${familyStatus(p,i)}</small></span><span class="shortcut">${i+1}</span></button>`).join('');
@@ -141,8 +151,9 @@ function showCharacterDialog(p,messages,upset=false){
   $('character-dialog-name').textContent=p.name;$('character-dialog-message').textContent=message;$('character-dialog').hidden=false;characterDialogTimer=3.6;
 }
 function updateCharacterDialog(dt){if(characterDialogTimer<=0)return;characterDialogTimer=Math.max(0,characterDialogTimer-dt);if(characterDialogTimer===0)$('character-dialog').hidden=true}
-function presentAchievement(id){const card=$('achievement-card'),achievement=achievementDefinitions[id];visibleAchievement=id;card.classList.remove('closing');$('achievement-title').textContent=achievement.title;$('achievement-description').textContent=achievement.description;card.hidden=false;gameAudio.achievement?.()}
-function unlockAchievement(id){if(unlockedAchievements[id]||!achievementDefinitions[id])return;unlockedAchievements[id]=true;$('achievement-value').textContent=Object.keys(unlockedAchievements).length+'/'+Object.keys(achievementDefinitions).length;if(visibleAchievement)pendingAchievements.push(id);else presentAchievement(id)}
+function presentAchievement(id){const card=$('achievement-card'),achievement=achievementDefinitions[id];window.clearTimeout(achievementHideTimer);visibleAchievement=id;card.classList.remove('closing');$('achievement-title').textContent=achievement.title;$('achievement-description').textContent=achievement.description;card.hidden=false;gameAudio.achievement?.();achievementHideTimer=window.setTimeout(hideAchievement,5000)}
+function buildAchievementCollection(){const ids=Object.keys(unlockedAchievements);$('achievement-list').innerHTML=ids.length?ids.map(id=>{const achievement=achievementDefinitions[id];return`<article class="achievement-list-item"><span aria-hidden="true">★</span><div><strong>${achievement.title}</strong><p>${achievement.description}</p></div></article>`}).join(''):'<p class="achievement-empty">Nie zdobyto jeszcze żadnych achievementów.</p>'}
+function unlockAchievement(id){if(unlockedAchievements[id]||!achievementDefinitions[id])return;unlockedAchievements[id]=true;$('achievement-value').textContent=Object.keys(unlockedAchievements).length+'/'+Object.keys(achievementDefinitions).length;buildAchievementCollection();if(visibleAchievement)pendingAchievements.push(id);else presentAchievement(id)}
 function hideAchievement(){
   if(!visibleAchievement)return;const card=$('achievement-card');visibleAchievement=null;card.classList.add('closing');window.clearTimeout(achievementHideTimer);achievementHideTimer=window.setTimeout(()=>{card.hidden=true;card.classList.remove('closing');const next=pendingAchievements.shift();if(next)presentAchievement(next)},300);
 }
@@ -153,7 +164,7 @@ function checkWorkAchievements(){
   const parentsWorking=['Mama','Tata'].every(name=>workers.some(worker=>worker.name===name)),childrenWorking=daughters.some(name=>workers.some(worker=>worker.name===name));
   if(parentsWorking&&!childrenWorking)unlockAchievement('parentsWork');
 }
-function checkRadioAchievement(){if(gameAudio.radioState?.().id==='liberian-girl')unlockAchievement('liberianGirl')}
+function checkRadioAchievement(){const radio=gameAudio.radioState?.();if(radio?.id==='liberian-girl'&&radio.playing)unlockAchievement('liberianGirl')}
 function checkProgressAchievements(){if(family.every(member=>member.aboard))unlockAchievement('allAboard');if(money>=2000)unlockAchievement('remote2000');if(drivenBy.size===family.length)unlockAchievement('allDrivers');if(collisionCount>=5)unlockAchievement('scratches')}
 function atPassengerSeat(){return mode==='interior'&&!!family[selected].passenger}
 function insideInteractionZone(p,zone){return p.x>=zone.left&&p.x<=zone.right&&p.y>=zone.top&&p.y<=zone.bottom}
@@ -204,6 +215,7 @@ function interactionLabel(){
   const p=family[selected];
   if(mode==='driving'){const waiting=waitingFamilyNearCar();return waiting?'Zabierz '+(waiting.pickupName||waiting.name):'Wróć do wnętrza'}
   if(mode==='outside')return outsidePersonNearCar(p)?'Wejdź do samochodu':'Podejdź do samochodu';
+  if(p.driving)return'Wstań zza kierownicy';
   if(p.passenger)return'Wstań z fotela';if(p.seated)return'Wstań';
   if(mode==='school'){
     if(atSchoolDoor(p))return'Wróć do samochodu';if(atSchoolBoard(p))return'Użyj tablicy';
@@ -218,7 +230,7 @@ function interactionLabel(){
   const close=touchingFamilyMember(p);if(close)return close.sleeping?'Obudź':'Przytul';
   return target?'Miejsce zajęte':'Interakcja';
 }
-function selectPerson(i){if(!family[i]||(mode==='outside'?family[i].room!=='outside':!family[i].aboard))return;if(mode==='driving'){toast(touchHint('Najpierw dotknij „Wróć do wnętrza”.','Najpierw wróć do wnętrza klawiszem E.'));return}window.resetTouchControls?.();selected=i;mode=family[i].room==='outside'?'outside':family[i].room==='school'?'school':'interior';buildFamily();toast(family[i].name+(mode==='outside'?touchHint(' · Joystick — spacer po mieście',' · WASD — spacer po mieście'):touchHint(' · Dotknij „Wstań”, potem użyj joysticka.',' · E — interakcja, WASD — spacer')))}
+function selectPerson(i){if(!family[i]?.joined)return;window.resetTouchControls?.();selected=i;mode=family[i].room==='outside'?'outside':family[i].room==='school'?'school':family[i].driving?'driving':'interior';buildFamily();toast(family[i].name+(mode==='outside'?touchHint(' · Joystick — spacer po mieście',' · WASD — spacer po mieście'):mode==='driving'?touchHint(' prowadzi · osobne pedały · kierownica ← →',' prowadzi · W/S — gaz i hamulec · A/D — skręt'):touchHint(' · Dotknij „Wstań”, potem użyj joysticka.',' · E — interakcja, WASD — spacer')))}
 function familyMemberAtCabinPoint(x,y){
   return family.map((p,i)=>({p,i,distance:Math.hypot(x-p.x,y-(p.y-3))}))
     .filter(({p})=>p.aboard&&p.room==='car'&&Math.abs(x-p.x)<=12&&y>=p.y-21&&y<=p.y+15)
@@ -229,8 +241,8 @@ function selectPersonFromCanvas(event){
   const box=canvas.getBoundingClientRect(),fitScale=Math.max(box.width/canvas.width,box.height/canvas.height),drawnWidth=canvas.width*fitScale,drawnHeight=canvas.height*fitScale;
   const screenX=(event.clientX-box.left-(box.width-drawnWidth)/2)/fitScale,screenY=(event.clientY-box.top-(box.height-drawnHeight)/2)/fitScale;
   const scale=zoom*(1-roof*.82);if(scale<=0)return;
-  const rotatedX=(screenX-320)/scale,rotatedY=(screenY-210)/scale,cos=Math.cos(car.angle),sin=Math.sin(car.angle);
-  const index=familyMemberAtCabinPoint(rotatedX*cos+rotatedY*sin,-rotatedX*sin+rotatedY*cos);
+  const localX=(screenX-320)/scale,localY=(screenY-210)/scale;
+  const index=familyMemberAtCabinPoint(localX,localY);
   if(index>=0&&index!==selected)selectPerson(index);
 }
 canvas.addEventListener('click',selectPersonFromCanvas);
@@ -263,22 +275,23 @@ function interact(){
   const p=family[selected];
   if(mode==='outside'){
     if(!outsidePersonNearCar(p)){toast('Podejdź bliżej zaparkowanego samochodu.');return}
-    p.aboard=true;p.room='car';p.seated=false;p.passenger=false;p.station=null;p.x=46;p.y=-40;mode='interior';buildFamily();toast(p.name+' wraca do samochodu. Auto pozostaje zaparkowane.');return
+    p.aboard=true;p.joined=true;p.room='car';p.seated=false;p.passenger=false;p.station=null;p.x=46;p.y=-40;mode='interior';buildFamily();toast(p.name+' wraca do samochodu. Auto pozostaje zaparkowane.');return
   }
   if(mode==='driving'){
     const waiting=waitingFamilyNearCar();
     if(waiting){
+      const speedyPickup=Math.abs(car.speed)>=99;
       if(waiting.boardable===false){kasiaPickupAttempts++;if(kasiaPickupAttempts<5){showCharacterDialog(waiting,[kasiaDialogMessages[kasiaPickupAttempts-1]],true);return}waiting.boardable=true}
-      const freeSeat=cabinSeats.findIndex((seat,index)=>!workstationOccupant(index,waiting));waiting.aboard=true;waiting.room='car';waiting.seated=freeSeat>=0;waiting.station=freeSeat>=0?freeSeat:null;if(freeSeat>=0){waiting.x=cabinSeats[freeSeat].x;waiting.y=cabinSeats[freeSeat].y}else{waiting.x=0;waiting.y=38}buildFamily();showCharacterDialog(waiting,waiting.name==='Kasia'?['No dobrze, przekonaliście mnie!']:pickupDialogMessages);if(waiting.name==='Kasia')unlockAchievement('kasia');return}
-    mode='interior';p.room='car';p.x=-12;p.y=-53;p.seated=false;p.station=null;car.autoX=Math.round(car.x/350)*350;car.speed=32;buildFamily();toast('Kierowca znów prowadzi. Wróć do dowolnego wolnego miejsca.');return
+      const freeSeat=cabinSeats.findIndex((seat,index)=>!workstationOccupant(index,waiting));waiting.aboard=true;waiting.joined=true;waiting.room='car';waiting.seated=freeSeat>=0;waiting.station=freeSeat>=0?freeSeat:null;if(freeSeat>=0){waiting.x=cabinSeats[freeSeat].x;waiting.y=cabinSeats[freeSeat].y}else{waiting.x=0;waiting.y=38}buildFamily();showCharacterDialog(waiting,waiting.name==='Kasia'?['No dobrze, przekonaliście mnie!']:pickupDialogMessages);if(waiting.name==='Kasia')unlockAchievement('kasia');if(speedyPickup)unlockAchievement('speedyPickup');return}
+    mode='interior';p.driving=false;p.room='car';p.x=-12;p.y=-53;p.seated=false;p.station=null;car.autoX=Math.round(car.x/350)*350;car.speed=0;car.parked=true;buildFamily();toast(p.name+' odchodzi od kierownicy. Samochód jest zatrzymany.');return
   }
   if(mode==='school'){
-    if(p.seated){p.seated=false;p.teacher=false;p.schoolSeat=null;p.x=0;p.y=30;buildFamily();toast('Wstajesz i możesz spacerować po klasie.');return}
+    if(p.seated){const wasTeacher=p.teacher;p.seated=false;p.teacher=false;p.schoolSeat=null;p.x=wasTeacher?-8:0;p.y=wasTeacher?-42:30;buildFamily();toast(wasTeacher?'Wstajesz obok biurka nauczyciela.':'Wstajesz i możesz spacerować po klasie.');return}
     if(atSchoolDoor(p)){p.room='car';p.x=0;p.y=70;mode='interior';buildFamily();toast('Wracasz do samochodu.');return}
     if(atSchoolBoard(p)){openBoardEditor();return}
     if(atTeacherPlace(p)){
       const occupant=teacherOccupant(p);if(occupant){toast('Miejsce nauczyciela zajmuje '+occupant.name+'.');return}
-      p.teacher=true;p.seated=true;p.schoolSeat=null;p.x=-31;p.y=-43;buildFamily();toast(p.name+' zostaje nauczycielem.');return
+      p.teacher=true;p.seated=true;p.schoolSeat=null;p.x=-34;p.y=-55;buildFamily();toast(p.name+' zostaje nauczycielem.');return
     }
     const schoolTarget=nearestSchoolSeat(p),schoolOccupant=schoolTarget&&schoolSeatOccupant(schoolTarget.index,p);
     if(schoolTarget&&!schoolOccupant){p.seated=true;p.teacher=false;p.schoolSeat=schoolTarget.index;p.x=schoolTarget.seat.x;p.y=schoolTarget.seat.y;buildFamily();toast(p.name+' siada przy ławce.');return}
@@ -286,6 +299,7 @@ function interact(){
     if(schoolOccupant){toast('Tę ławkę zajmuje '+schoolOccupant.name+'.');return}
     toast('Podejdź do ławki, stolika nauczyciela, tablicy albo drzwi.');return
   }
+  if(p.driving){p.driving=false;p.x=-12;p.y=-53;car.speed=0;car.parked=true;buildFamily();toast(p.name+' odchodzi od kierownicy. Samochód jest zatrzymany.');return}
   if(p.passenger){p.passenger=false;p.seated=false;p.station=null;p.x=17;p.y=-34;buildFamily();toast('Wstajesz z fotela pasażera. Radio gra dalej.');return}
   if(p.seated){const standing=standingSpotForSeat(p.station);p.seated=false;p.station=null;p.x=standing.x;p.y=standing.y;walked=true;buildFamily();toast('Możesz usiąść przy dowolnym wolnym miejscu.');return}
   if(atExitDoor(p)){
@@ -297,7 +311,7 @@ function interact(){
     if(occupant){const closePerson=touchingFamilyMember(p);if(closePerson?.sleeping){wakePerson(closePerson);return}if(closePerson){hugFamily(p,closePerson);return}toast('Fotel pasażera jest zajęty.');return}
     p.passenger=true;p.seated=true;p.station=null;p.x=36;p.y=-44;buildFamily();toast(touchHint('Radio: dotknij przycisku ♫.','Radio: R — włącz / wyłącz · [ / ] — zmień utwór · E — wstań'));return;
   }
-  if(atDriverPlace(p)){mode='driving';taken=true;car.parked=false;drivenBy.add(p.name);checkProgressAchievements();buildFamily();toast(p.name+touchHint(' prowadzi · osobne pedały · kierownica ← →',' prowadzi · W/S — gaz i hamulec · A/D — skręt · E — wnętrze'));return}
+  if(atDriverPlace(p)){const currentDriver=family.find(member=>member.driving);if(currentDriver&&currentDriver!==p){toast('Za kierownicą siedzi '+currentDriver.name+'.');return}p.driving=true;p.x=-37;p.y=-48;mode='driving';taken=true;car.parked=false;drivenBy.add(p.name);checkProgressAchievements();buildFamily();toast(p.name+touchHint(' prowadzi · osobne pedały · kierownica ← →',' prowadzi · W/S — gaz i hamulec · A/D — skręt · E — wnętrze'));return}
   const target=nearestWorkstation(p),occupant=target&&workstationOccupant(target.index,p);
   if(target&&!occupant){p.seated=true;p.station=target.index;p.x=target.seat.x;p.y=target.seat.y;buildFamily();toast(p.name+' siada przy '+target.seat.label+'.');return}
   const closePerson=touchingFamilyMember(p);
@@ -308,8 +322,8 @@ function interact(){
 }
 function exitCarAtSideDoor(){
   if(mode!=='interior')return false;const p=family[selected];if(p.seated||p.passenger||!atSideExit(p))return false;
-  const side=family.indexOf(p)%3-1;p.aboard=false;p.room='outside';p.station=null;p.sleeping=false;p.pickup={x:car.x+Math.cos(car.angle)*side*24-Math.sin(car.angle)*72,y:car.y+Math.sin(car.angle)*side*24+Math.cos(car.angle)*72};
-  const nextAboard=family.findIndex(member=>member.aboard);if(nextAboard>=0){selected=nextAboard;mode=family[selected].room==='school'?'school':'interior';toast(p.name+' wysiada bocznym wyjściem i czeka przy drodze.')}else{selected=family.indexOf(p);mode='outside';car.parked=true;car.speed=0;toast('Wszyscy wysiedli. Możesz spacerować po mieście — wskaźnik zaprowadzi cię z powrotem do auta.')}
+  const doorOffset={x:28,y:0},cos=Math.cos(car.angle),sin=Math.sin(car.angle);p.aboard=false;p.room='outside';p.station=null;p.sleeping=false;p.pickup={x:car.x+doorOffset.x*cos-doorOffset.y*sin,y:car.y+doorOffset.x*sin+doorOffset.y*cos};
+  family.forEach(member=>member.driving=false);selected=family.indexOf(p);mode='outside';car.parked=true;car.speed=0;toast(p.name+' wysiada z samochodu. Możesz spacerować po mieście i wrócić do zaparkowanego auta.');
   buildFamily();return true;
 }
 window.addEventListener('keydown',e=>{if(e.target instanceof HTMLInputElement)return;const k=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright',' ','e','p','1','2','3','4','5','6'].includes(k))e.preventDefault();if(!e.repeat){if(k==='e')interact();if(k==='p')togglePause();if(['1','2','3','4','5','6'].includes(k))selectPerson(+k-1)}keys.add(k)});
@@ -342,10 +356,11 @@ function world(){
     // Zebra crossings.
     for(let n=0;n<5;n++){rect(x+59,y-36+n*16,15,8,'#b7bca2');rect(x-36+n*16,y+59,8,15,'#b7bca2')}
   }
-  family.forEach((p,index)=>{if(p.aboard||!p.pickup)return;const {x,y}=p.pickup;ctx.save();ctx.globalAlpha=.28;ctx.fillStyle=index===selected&&mode==='outside'?'#f4dc76':'#d1e997';ctx.beginPath();ctx.arc(x,y,24+Math.sin(time*3)*3,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;person(p,x,y,0,index===selected&&mode==='outside'&&down('w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'));ctx.fillStyle='#101816';ctx.fillRect(x-24,y-31,48,11);ctx.fillStyle='#edf0cf';ctx.font='8px monospace';ctx.textAlign='center';ctx.fillText(p.name.toUpperCase(),x,y-23);ctx.textAlign='start';ctx.restore()})
+  family.forEach((p,index)=>{if(p.aboard||!p.pickup)return;const {x,y}=p.pickup;ctx.save();if(!(index===selected&&mode==='outside')){ctx.globalAlpha=.28;ctx.fillStyle='#d1e997';ctx.beginPath();ctx.arc(x,y,24+Math.sin(time*3)*3,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}person(p,x,y,0,index===selected&&mode==='outside'&&down('w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'));ctx.fillStyle='#101816';ctx.fillRect(x-24,y-31,48,11);ctx.fillStyle='#edf0cf';ctx.font='8px monospace';ctx.textAlign='center';ctx.fillText(p.name.toUpperCase(),x,y-23);ctx.textAlign='start';ctx.restore()})
 }
 function vehicle(x,y,a,color,large){ctx.save();ctx.translate(Math.round(x),Math.round(y));ctx.rotate(a);const w=large?136:18,h=large?216:34;rect(-w/2+3,-h/2+4,w,h,'#34493c');rect(-w/2,-h/2,w,h,color);rect(-w/2+3,-h/2+3,w-6,h-6,color);rect(-w/2+4,-h/2+6,w-8,large?18:8,'#436366');rect(-w/2+4,h/2-12,w-8,7,'#526b63');rect(-w/2-2,-h/2+8,3,9,'#29372e');rect(w/2-1,-h/2+8,3,9,'#29372e');rect(-w/2-2,h/2-14,3,9,'#29372e');rect(w/2-1,h/2-14,3,9,'#29372e');if(large){rect(-55,-135,110,31,'#34493c');rect(-52,-132,104,27,color);rect(-47,-129,94,20,'#d1c093');rect(-44,-126,88,3,'#e3d5aa');rect(-2,-126,4,17,'#b5a77f');rect(-36,-132,15,5,'#f5dc9c');rect(21,-132,15,5,'#f5dc9c');rect(-46,-136,92,4,'#526357');rect(-20,-25,40,65,'#c6c5a3');rect(-16,-21,32,3,'#dcd9b5');rect(-12,-4,24,28,'#a8b39b');rect(-8,0,16,20,'#bec7a6')}else{rect(-w/2+3,-h/2,5,3,'#f5dc9c');rect(w/2-8,-h/2,5,3,'#f5dc9c')}ctx.restore()}
 function hitsVehicle(px,py,x,y,angle){const dx=px-x,dy=py-y,cos=Math.cos(angle),sin=Math.sin(angle),localX=dx*cos+dy*sin,localY=-dx*sin+dy*cos;return Math.abs(localX)<20&&Math.abs(localY)<28}
+function hitsPlayerCar(px,py){const dx=px-car.x,dy=py-car.y,cos=Math.cos(car.angle),sin=Math.sin(car.angle),localX=dx*cos+dy*sin,localY=-dx*sin+dy*cos;return Math.abs(localX)<20&&Math.abs(localY)<31}
 function worldObstacleAt(px,py){
   const baseI=Math.floor(px/350),baseJ=Math.floor(py/350);
   for(let i=baseI-1;i<=baseI+1;i++)for(let j=baseJ-1;j<=baseJ+1;j++){
@@ -358,10 +373,10 @@ function worldObstacleAt(px,py){
   return null;
 }
 function desk(x,y,laptop){rect(x-17,y-13,34,25,'#453f36');rect(x-17,y-15,34,24,'#b49970');rect(x-16,y-14,32,2,'#d6be8d');rect(x-11,y-11,22,14,'#303f3b');rect(x-9,y-9,18,10,'#87b8a4');rect(x-7,y-7,9,1,'#dbedbc');rect(x-7,y-4,13,1,'#bdd7a0');rect(x-9,y+4,19,4,laptop?'#758b7a':'#5c6c61');rect(x+13,y-8,3,6,'#ede0b4')}
-function interior(){
+function interior(compact=false){
   ctx.save();ctx.translate(car.x,car.y);ctx.rotate(car.angle);
   // The detailed cabin becomes a van slightly larger than the city's cars.
-  const vehicleScale=1-roof*.82;
+  const vehicleScale=compact?.18:1-roof*.82;
   ctx.scale(vehicleScale,vehicleScale);
   rect(-68,-102,140,216,'#31473c');rect(-68,-108,136,216,'#c5c2a0');rect(-62,-102,124,204,'#4f6151');rect(-55,-96,110,192,'#bdad85');
   for(let x=-53;x<54;x+=11)rect(x,-30,1,124,'#b09d77');
@@ -370,7 +385,7 @@ function interior(){
   const radio=gameAudio.radioState?.()||{on:false};
   rect(12,-73,35,12,'#293e35');rect(15,-71,21,7,radio.on?'#bdd68c':'#647561');rect(39,-70,5,5,'#d4c394');
   if(radio.on)for(let n=0;n<5;n++)rect(17+n*3,-65-Math.round((Math.sin(time*5+n)+1)*2),2,2,'#405a36');
-  person({color:'#9da384',hair:'#414436',name:'Kierowca'},-37,-48);rect(-44,-67,17,5,'#35483e');rect(-45,-69,4,9,'#35483e');rect(-31,-69,4,9,'#35483e');
+  const driver=family.find(member=>member.driving);if(driver)person(driver,-37,-48);rect(-44,-67,17,5,'#35483e');rect(-45,-69,4,9,'#35483e');rect(-31,-69,4,9,'#35483e');
   rect(-55,-27,37,4,'#7a785a');rect(18,-27,37,4,'#7a785a');
   // Long windows, trim and warm wooden floor.
   for(const side of [-1,1]){for(const y of [-12,43]){rect(side===-1?-64:56,y,8,40,'#354e49');rect(side===-1?-62:57,y+3,5,33,'#93b8a7');rect(side===-1?-62:57,y+3,5,3,'#d2dfbc')}}
@@ -382,10 +397,10 @@ function interior(){
   rect(34,35,10,12,'#a28761');rect(32,29,14,10,'#526b42');rect(36,25,6,14,'#75904d');rect(31,30,5,4,'#90a85d');
   // Rear door at the bottom edge of the vehicle.
   rect(-16,80,32,17,'#756b56');rect(-14,81,28,15,'#a89572');rect(-12,83,24,11,'#b9a47b');rect(8,88,2,2,'#e0d1a4');rect(-16,78,32,3,'#4f6151');
-  seatedFamilyInDrawOrder().forEach(p=>{person(p,p.x,p.y+(p.sleeping?3:0));if(p.sleeping){ctx.fillStyle='#edf0cf';ctx.font='bold 7px monospace';ctx.fillText('Z',p.x+8,p.y-17);ctx.font='bold 5px monospace';ctx.fillText('z',p.x+13,p.y-23)}});
+  seatedFamilyInDrawOrder().forEach(p=>person(p,p.x,p.y+(p.sleeping?3:0)));
   // Family carpet and loose laptop cable.
   rect(-14,31,29,47,'#8b7458');rect(-12,33,25,43,'#b99b70');for(let y=35;y<74;y+=6)rect(-10,y,21,2,'#cbb389');
-  family.forEach((p,i)=>{if(p.aboard&&p.room==='car'&&!p.seated)person(p,p.x,p.y,0,i===selected&&down('w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'))});
+  family.forEach((p,i)=>{if(p.aboard&&p.room==='car'&&!p.seated&&!p.driving)person(p,p.x,p.y,0,i===selected&&down('w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'))});
   family.filter(member=>member.aboard&&member.room==='car').forEach(drawSpeechBubble);
   family.filter(member=>member.aboard&&member.room==='car').forEach(member=>{const barX=member.x-9,barY=member.y-20;rect(barX,barY,18,3,'#513845');const pinkWidth=Math.round(18*(member.closeness||0)/100);if(pinkWidth>0)rect(barX,barY,pinkWidth,3,'#f29aad')});
   const p=family[selected];if(p.aboard&&p.room==='car')rect(p.x-9,p.y-23,18,2,'#d8ee9b');
@@ -393,11 +408,13 @@ function interior(){
   else if(!p.seated&&atSideExit(p)){rect(47,-52,10,14,'#243b2f');ctx.fillStyle='#e3f0b1';ctx.font='9px monospace';ctx.fillText('E',49,-42)}
   else if(!p.seated&&(atPassengerPlace(p)||atDriverPlace(p))){const px=atPassengerPlace(p)?30:-28;rect(px-7,-82,14,10,'#243b2f');ctx.fillStyle='#e3f0b1';ctx.font='9px monospace';ctx.fillText('E',px-3,-74)}
   drawCoinParticles();
+  drawSleepParticles();
   drawHeartParticles();
   ctx.globalAlpha=roof;vehicle(0,0,0,'#e0d1a4',true);ctx.globalAlpha=1;
   ctx.restore();
 }
 function schoolDesk(x,y){rect(x-15,y-12,30,18,'#72583e');rect(x-14,y-11,28,4,'#b18b5d');rect(x-12,y+6,3,13,'#4b493e');rect(x+9,y+6,3,13,'#4b493e');rect(x-10,y+18,20,4,'#58634f')}
+function teacherDesk(){rect(-51,-50,34,5,'#bc9564');rect(-49,-46,30,14,'#7c6042');rect(-47,-43,26,8,'#8d704c');rect(-48,-32,4,8,'#514c3e');rect(-24,-32,4,8,'#514c3e')}
 function schoolRoom(){
   ctx.save();ctx.translate(320,210);ctx.scale(2.15,2.15);
   rect(-68,-100,136,200,'#31473c');rect(-64,-96,128,192,'#c1b58e');rect(-59,-91,118,182,'#a99066');
@@ -405,15 +422,16 @@ function schoolRoom(){
   // Door back to the car, teacher's desk and one chalkboard.
   rect(-16,-96,32,25,'#756b56');rect(-14,-94,28,22,'#a89572');rect(8,-84,2,2,'#eee0b8');rect(-16,-72,32,3,'#4f6151');
   rect(14,-68,42,34,'#604832');rect(17,-65,36,25,'#183b31');rect(20,-62,30,2,'#f4f0d8');rect(19,-39,9,3,'#d8d0af');
-  rect(-51,-61,34,22,'#7c6042');rect(-49,-59,30,5,'#bc9564');rect(-47,-40,4,14,'#514c3e');rect(-25,-40,4,14,'#514c3e');rect(-43,-52,18,9,'#d8d0af');
+  const teacher=family.find(member=>member.aboard&&member.room==='school'&&member.teacher);if(teacher)person(teacher,teacher.x,teacher.y);
+  teacherDesk();
   schoolSeats.forEach(seat=>schoolDesk(seat.x,seat.y));
-  family.filter(member=>member.aboard&&member.room==='school'&&member.seated).sort((a,b)=>a.y-b.y).forEach(member=>person(member,member.x,member.y));
+  family.filter(member=>member.aboard&&member.room==='school'&&member.seated&&!member.teacher).sort((a,b)=>a.y-b.y).forEach(member=>person(member,member.x,member.y));
   family.forEach((member,i)=>{if(member.aboard&&member.room==='school'&&!member.seated)person(member,member.x,member.y,0,i===selected&&down('w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'))});
   const p=family[selected];if(p.room==='school')rect(p.x-9,p.y-23,18,2,'#d8ee9b');
   if(!p.seated){let prompt=null;if(atSchoolDoor(p))prompt={x:0,y:-82};else if(atSchoolBoard(p))prompt={x:35,y:-74};else if(atTeacherPlace(p))prompt={x:-34,y:-68};else{const target=nearestSchoolSeat(p);if(target)prompt={x:target.seat.x,y:target.seat.y-25}}if(prompt){rect(prompt.x-7,prompt.y-5,14,10,'#243b2f');ctx.fillStyle='#e3f0b1';ctx.font='9px monospace';ctx.fillText('E',prompt.x-3,prompt.y+3)}}
   ctx.restore();
 }
-function canWalkSchool(x,y){if(x<-54||x>54||y<-85||y>84)return false;const obstacles=[[-55,-67,-14,-25],[12,-72,57,-26],...schoolSeats.map(seat=>[seat.x-15,seat.y-12,seat.x+15,seat.y+12])];return !obstacles.some(([a,b,c,d])=>x>a-3&&x<c+3&&y>b-3&&y<d+3)}
+function canWalkSchool(x,y){if(x<-54||x>54||y<-85||y>84)return false;const obstacles=[[-51,-50,-17,-24],[12,-72,57,-26],...schoolSeats.map(seat=>[seat.x-15,seat.y-12,seat.x+15,seat.y+12])];return !obstacles.some(([a,b,c,d])=>x>a-3&&x<c+3&&y>b-3&&y<d+3)}
 function canWalk(x,y){if(x<-48||x>48||y<-54||y>89)return false;const obstacles=[[-56,-21,-23,10],[23,-21,56,10],[-56,35,-23,65],[27,52,56,90]];return !obstacles.some(([a,b,c,d])=>x>a-5&&x<c+5&&y>b-8&&y<d+8)}
 function seatedFamilyInDrawOrder(){return family.filter(p=>p.aboard&&p.room==='car'&&p.seated).sort((a,b)=>a.y-b.y)}
 function activeWorkers(){return family.filter(p=>p.aboard&&p.seated&&!p.sleeping&&!p.passenger&&Number.isInteger(p.station)&&p.station<workstations.length)}
@@ -421,12 +439,30 @@ function wakePerson(personToWake){personToWake.sleeping=false;personToWake.speec
 function updateSleepEvents(dt){
   nextSleepIn-=dt;if(nextSleepIn>0)return;const candidates=activeWorkers();nextSleepIn=45+Math.random()*55;if(!candidates.length)return;const sleeper=candidates[Math.floor(Math.random()*candidates.length)];sleeper.sleeping=true;sleeper.speech={text:'Zzz… jeszcze jeden arkusz…',timer:4};buildFamily()
 }
-function commentOptions(person){if(person.passenger)return activityComments.passenger;if(Number.isInteger(person.station)&&person.station<3)return activityComments[person.station];if(Number.isInteger(person.station))return activityComments.couch;return activityComments.walking}
+function polishMinutes(value){const minutes=Math.max(0,Math.floor(value));if(minutes===1)return'1 minutę';const lastTwo=minutes%100,last=minutes%10;return minutes+' '+(last>=2&&last<=4&&(lastTwo<12||lastTwo>14)?'minuty':'minut')}
+function clockTime(date){return String(date.getHours()).padStart(2,'0')+':'+String(date.getMinutes()).padStart(2,'0')}
+function dynamicActivityComments(now=new Date()){
+  const weekdayComments=['Czyżby dzisiaj była niedziela?','Czyżby dzisiaj był poniedziałek?','Czyżby dzisiaj był wtorek?','Czyżby dzisiaj była środa?','Czyżby dzisiaj był czwartek?','Czyżby dzisiaj był piątek?','Czyżby dzisiaj była sobota?'],nextHour=new Date(now);nextHour.setHours(now.getHours()+1,0,0,0);
+  const comments=[
+    'Czy wiesz, że grasz już '+polishMinutes(time/60)+'?',
+    weekdayComments[now.getDay()],
+    'Na liczniku mamy już '+Math.floor(money).toLocaleString('pl-PL')+' monet. Kto to wszystko wyda?',
+    'W samochodzie jest teraz '+aboardFamilyCount()+' z '+family.length+' osób. Robi się rodzinnie.',
+    'Ta podróż ma już '+distance.toFixed(1).replace('.',',')+' km. Daleko jeszcze?',
+    weather==='rain'?'Pada już nawet w naszych rozmowach.':'Ani jednej chmurki. Podejrzanie spokojnie.'
+  ];
+  if(now.getHours()<8)comments.push('Czy nie za wcześnie na granie? Jeszcze nie ma '+clockTime(nextHour)+'.');
+  if(now.getHours()>=21)comments.push('Czy nie za późno na granie? Jest już '+clockTime(now)+'.');
+  return comments;
+}
+function commentOptions(person){const contextual=person.passenger?activityComments.passenger:Number.isInteger(person.station)&&person.station<3?activityComments[person.station]:Number.isInteger(person.station)?activityComments.couch:activityComments.walking;return[...contextual,...dynamicActivityComments()]}
 function updateActivityComments(dt){
   family.forEach(person=>{if(person.speech){person.speech.timer-=dt;if(person.speech.timer<=0)person.speech=null}});nextCommentIn-=dt;if(nextCommentIn>0||mode!=='interior')return;nextCommentIn=22+Math.random()*28;const candidates=family.filter(person=>person.aboard&&person.room==='car'&&!person.sleeping);if(!candidates.length)return;const speaker=candidates[Math.floor(Math.random()*candidates.length)],options=commentOptions(speaker);speaker.speech={text:options[Math.floor(Math.random()*options.length)],timer:4.8}
 }
 function updateWeather(dt){weatherTimer-=dt;if(weatherTimer>0)return;if(weather==='clear'){weather='rain';weatherTimer=22+Math.random()*26;toast('Zaczyna padać. Krople bębnią o dach.')}else{weather='clear';weatherTimer=55+Math.random()*75;toast('Deszcz ustaje. Droga znowu jest spokojna.')}}
-function drawSpeechBubble(person){if(!person.speech)return;ctx.save();ctx.font='6px monospace';const text=person.speech.text,width=Math.min(92,Math.max(28,ctx.measureText(text).width+8)),x=Math.max(-56,Math.min(56-width,person.x-width/2)),y=person.y-37;ctx.fillStyle='#101816ed';ctx.fillRect(x,y,width,13);ctx.fillStyle='#d1e997';ctx.fillRect(x,y,width,1);ctx.fillStyle='#f5f3df';ctx.textAlign='center';ctx.fillText(text.length>25?text.slice(0,24)+'…':text,x+width/2,y+9);ctx.fillStyle='#101816ed';ctx.beginPath();ctx.moveTo(person.x-3,y+13);ctx.lineTo(person.x+3,y+13);ctx.lineTo(person.x,y+17);ctx.fill();ctx.restore()}
+function wrapSpeechText(text,maxCharacters=22){const words=text.trim().split(/\s+/),lines=[];let line='';for(const word of words){const candidate=line?line+' '+word:word;if(candidate.length<=maxCharacters||!line)line=candidate;else{lines.push(line);line=word}}if(line)lines.push(line);return lines}
+function wrapSpeechTextToWidth(text,maxWidth){const words=text.trim().split(/\s+/),lines=[];let line='';for(const word of words){const candidate=line?line+' '+word:word;if(!line||ctx.measureText(candidate).width<=maxWidth)line=candidate;else{lines.push(line);line=word}}if(line)lines.push(line);return lines}
+function drawSpeechBubble(person){if(!person.speech)return;ctx.save();ctx.font='6px monospace';const lines=wrapSpeechTextToWidth(person.speech.text,70),lineHeight=8,width=Math.max(32,...lines.map(line=>ctx.measureText(line).width+10)),height=7+lines.length*lineHeight,x=Math.max(-56,Math.min(56-width,person.x-width/2)),y=Math.max(-96,person.y-height-20);ctx.fillStyle='#101816ed';ctx.fillRect(x,y,width,height);ctx.fillStyle='#d1e997';ctx.fillRect(x,y,width,1);ctx.fillStyle='#f5f3df';ctx.textAlign='center';lines.forEach((line,index)=>ctx.fillText(line,x+width/2,y+9+index*lineHeight));const tailX=Math.max(x+5,Math.min(x+width-5,person.x)),tailBottom=y+height,tailTip=Math.min(person.y-15,tailBottom+7);ctx.fillStyle='#101816ed';ctx.beginPath();ctx.moveTo(tailX-3,tailBottom);ctx.lineTo(tailX+3,tailBottom);ctx.lineTo(person.x,tailTip);ctx.fill();ctx.restore()}
 function workMultiplier(p){return .5+Math.max(0,Math.min(100,p.closeness||0))/100}
 function updateCloseness(dt){family.forEach(p=>p.closeness=Math.max(0,(p.closeness||0)-dt*.5))}
 function updateEconomy(dt){
@@ -438,6 +474,8 @@ function updateEconomy(dt){
     if(p.coinTimer<=0){const seat=cabinSeats[p.station];coinParticles.push({x:seat.x+(Math.random()-.5)*8,y:seat.y-18,age:0,life:.85,drift:(Math.random()-.5)*7});p.coinTimer=(.48+Math.random()*.25)/workMultiplier(p)}
   });
   for(let i=coinParticles.length-1;i>=0;i--){const coin=coinParticles[i];coin.age+=dt;coin.y-=13*dt;coin.x+=coin.drift*dt;if(coin.age>=coin.life)coinParticles.splice(i,1)}
+  family.forEach(p=>{if(!p.sleeping){p.sleepParticleTimer=0;return}p.sleepParticleTimer=(p.sleepParticleTimer||0)-dt;if(p.sleepParticleTimer<=0){sleepParticles.push({x:p.x+7+(Math.random()-.5)*5,y:p.y-17,age:0,life:1.5,drift:3+Math.random()*4,size:Math.random()<.45?5:7});p.sleepParticleTimer=.42+Math.random()*.28}});
+  for(let i=sleepParticles.length-1;i>=0;i--){const particle=sleepParticles[i];particle.age+=dt;particle.y-=10*dt;particle.x+=particle.drift*dt;if(particle.age>=particle.life)sleepParticles.splice(i,1)}
   const shown=Math.floor(money);if(shown!==lastMoneyShown){$('money-value').textContent=shown.toLocaleString('pl-PL');lastMoneyShown=shown}
   for(let i=heartParticles.length-1;i>=0;i--){const heart=heartParticles[i];heart.age+=dt;heart.y-=11*dt;heart.x+=heart.drift*dt;if(heart.age>=heart.life)heartParticles.splice(i,1)}
   if(bond!==lastBondShown){$('bond-value').textContent=bond.toLocaleString('pl-PL');lastBondShown=bond}
@@ -445,6 +483,7 @@ function updateEconomy(dt){
 function drawCoinParticles(){
   coinParticles.forEach(coin=>{const alpha=Math.max(0,1-coin.age/coin.life);ctx.globalAlpha=alpha;const pulse=coin.age<.12?1+coin.age*4:1;ctx.fillStyle='#9d7927';ctx.beginPath();ctx.arc(coin.x,coin.y,4*pulse,0,Math.PI*2);ctx.fill();ctx.fillStyle='#f4dc76';ctx.beginPath();ctx.arc(coin.x,coin.y-1,2.7*pulse,0,Math.PI*2);ctx.fill();ctx.fillStyle='#7a5b1d';ctx.font='bold 5px monospace';ctx.textAlign='center';ctx.fillText('$',coin.x,coin.y+1.5);ctx.textAlign='start';ctx.globalAlpha=1})
 }
+function drawSleepParticles(){sleepParticles.forEach(particle=>{const alpha=Math.max(0,1-particle.age/particle.life);ctx.save();ctx.globalAlpha=alpha;ctx.fillStyle='#edf0cf';ctx.font='bold '+particle.size+'px monospace';ctx.fillText('Z',particle.x,particle.y);ctx.restore()})}
 function drawHeartParticles(){
   heartParticles.forEach(heart=>{const alpha=Math.max(0,1-heart.age/heart.life),pulse=heart.age<.16?.8+heart.age*2.5:1;ctx.save();ctx.globalAlpha=alpha;ctx.translate(Math.round(heart.x),Math.round(heart.y));ctx.scale(pulse,pulse);rect(-5,-3,4,4,'#f29aad');rect(1,-3,4,4,'#f29aad');rect(-6,-1,12,4,'#f29aad');rect(-4,3,8,2,'#f29aad');rect(-2,5,4,2,'#f29aad');ctx.restore()})
 }
@@ -454,10 +493,10 @@ function update(dt){
   checkRadioAchievement();
   updateCharacterDialog(dt);if(paused)return;time+=dt;toastTimer-=dt;collisionCooldown=Math.max(0,collisionCooldown-dt);updateEconomy(dt);updateCloseness(dt);updateWeather(dt);updateSleepEvents(dt);updateActivityComments(dt);checkProgressAchievements();
   const p=family[selected];if(mode==='outside'){
-    car.speed=0;car.parked=true;let dx=(down('d','arrowright')?1:0)-(down('a','arrowleft')?1:0),dy=(down('s','arrowdown')?1:0)-(down('w','arrowup')?1:0),length=Math.hypot(dx,dy)||1;dx=dx/length*55*dt;dy=dy/length*55*dt;const nx=p.pickup.x+dx,ny=p.pickup.y+dy;if(!worldObstacleAt(nx,ny)){p.pickup.x=nx;p.pickup.y=ny}
+    car.speed=0;car.parked=true;let dx=(down('d','arrowright')?1:0)-(down('a','arrowleft')?1:0),dy=(down('s','arrowdown')?1:0)-(down('w','arrowup')?1:0),length=Math.hypot(dx,dy)||1;dx=dx/length*55*dt;dy=dy/length*55*dt;const nx=p.pickup.x+dx,ny=p.pickup.y+dy;if(!worldObstacleAt(nx,ny)&&!hitsPlayerCar(nx,ny)){p.pickup.x=nx;p.pickup.y=ny}
   }else if(mode!=='driving'){
-    // Autopilot follows the northbound avenue while everyone works.
-    if(!car.parked){car.angle+=(0-car.angle)*Math.min(1,dt*4);car.x+=(car.autoX-car.x)*Math.min(1,dt*2);car.y-=23*dt;car.speed=32}else car.speed=0;
+    const driver=family.find(member=>member.driving);
+    if(driver&&!car.parked){const speed=23,nx=car.x+Math.sin(car.angle)*speed*dt,ny=car.y-Math.cos(car.angle)*speed*dt;if(!worldObstacleAt(nx,ny)){car.x=nx;car.y=ny;car.speed=32}else car.speed=0}else car.speed=0;
     if(!p.seated){let dx=(down('d','arrowright')?1:0)-(down('a','arrowleft')?1:0),dy=(down('s','arrowdown')?1:0)-(down('w','arrowup')?1:0);const l=Math.hypot(dx,dy)||1;dx=dx/l*47*dt;dy=dy/l*47*dt;const walk=mode==='school'?canWalkSchool:canWalk;if(walk(p.x+dx,p.y))p.x+=dx;if(walk(p.x,p.y+dy))p.y+=dy}
   }else{
     const gas=down('w','arrowup'),brake=down('s','arrowdown',' ');car.speed+=(brake?-85:gas?48:-10)*dt;car.speed=Math.max(-22,Math.min(100,car.speed));if(Math.abs(car.speed)<.5)car.speed=0;
@@ -468,7 +507,7 @@ function update(dt){
   }
   distance+=Math.abs(car.speed)*dt/3600;const targetZoom=mode==='interior'?1.77:mode==='outside'?1.45:.88;zoom+=(targetZoom-zoom)*Math.min(1,dt*3);roof+=((mode==='driving'||mode==='outside'?1:0)-roof)*Math.min(1,dt*4);
   $('speed').textContent=Math.round(Math.abs(car.speed));$('distance').textContent=distance.toFixed(1);$('view-label').textContent=mode==='interior'?'WNĘTRZE SAMOCHODU':mode==='school'?'PRZYCZEPKA · SZKOŁA':mode==='outside'?'MIASTO · PIESZO':'MIASTO · ZA KIEROWNICĄ';
-  $('driver-name').textContent=mode==='driving'?p.name:'Kierowca';$('driver-status').textContent=mode==='driving'?'Za kierownicą · sterujesz':'Za kierownicą · autopilot';
+  const currentDriver=family.find(member=>member.driving);$('driver-name').textContent=currentDriver?.name||'Brak kierowcy';$('driver-status').textContent=mode==='driving'?'Za kierownicą · sterujesz':currentDriver?'Za kierownicą · prowadzi':'Samochód stoi';
   const waitingNearby=mode==='driving'?waitingFamilyNearCar():null;
   $('status').textContent=mode==='outside'?p.name+' spaceruje po mieście. Samochód czeka na parkingu.':waitingNearby?(waitingNearby.boardable===false?waitingNearby.name+' jest przy drodze.':waitingNearby.name+' czeka przy drodze — zatrzymaj się i zabierz ją.'):mode==='driving'?p.name+' prowadzi. Szukaj osób przy drodze.':mode==='school'?(p.teacher?p.name+' prowadzi lekcję.':p.seated?p.name+' siedzi przy ławce.':p.name+' jest w szkolnej przyczepce.'):p.passenger?p.name+' przy radiu. Kierowca prowadzi.':p.seated?(p.sleeping?p.name+' zasnął przy komputerze.':'Kierowca prowadzi. Rodzina pracuje.'):p.name+' spaceruje. Kierowca prowadzi.';
   $('move-label').textContent=mode==='driving'?'Gaz / hamulec / skręt':'Poruszanie';$('control-mode').textContent=mode==='driving'?'Nowa perspektywa. Ten sam dom.':mode==='school'?'Mobilna klasa jest gotowa do lekcji.':'W środku jest całkiem przytulnie.';
@@ -479,7 +518,7 @@ function update(dt){
   else if(toastTimer<=0&&mode==='interior'&&!p.seated&&atPassengerPlace(p))$('toast').textContent=touchHint('Dotknij „Usiądź przy radiu”.','E — usiądź na fotelu pasażera i obsługuj radio');
   if(toastTimer<=0&&touchHint(true,false))$('toast').textContent='';
 }
-function draw(){ctx.clearRect(0,0,640,420);if(mode==='school')schoolRoom();else if(mode==='outside'){const p=family[selected];ctx.save();ctx.translate(320,210);ctx.scale(zoom,zoom);ctx.translate(-p.pickup.x,-p.pickup.y);world();vehicle(car.x,car.y,car.angle,'#e0d1a4',true);ctx.restore()}else{ctx.save();ctx.translate(320,210);ctx.scale(zoom,zoom);ctx.translate(-car.x,-car.y);world();interior();ctx.restore()}
+function draw(){ctx.clearRect(0,0,640,420);if(mode==='school')schoolRoom();else if(mode==='outside'){const p=family[selected];ctx.save();ctx.translate(320,210);ctx.scale(zoom,zoom);ctx.translate(-p.pickup.x,-p.pickup.y);world();interior(true);ctx.restore()}else{ctx.save();ctx.translate(320,210);ctx.scale(zoom,zoom);if(mode==='interior')ctx.rotate(-car.angle);ctx.translate(-car.x,-car.y);world();interior();ctx.restore()}
   if(weather==='rain'&&(mode==='driving'||mode==='outside'))drawRain();
   // Pixel corner markers and quiet scene caption.
   rect(13,13,19,2,'#d8e1b7');rect(13,13,2,19,'#d8e1b7');rect(608,13,19,2,'#d8e1b7');rect(625,13,2,19,'#d8e1b7');
@@ -539,7 +578,12 @@ function openSettings(){settingsWasPaused=paused;if(!paused)togglePause();settin
 function closeSettings(){settingsModal.hidden=true;if(!settingsWasPaused&&paused)togglePause();settingsToggle.focus?.()}
 settingsToggle.onclick=openSettings;settingsClose.onclick=closeSettings;
 settingsModal.addEventListener('click',event=>{if(event.target===settingsModal)closeSettings()});
+const achievementsModal=$('achievements-modal'),achievementsToggle=$('achievement-counter'),achievementsClose=$('achievements-close');let achievementsWasPaused=false;
+function openAchievements(){achievementsWasPaused=paused;if(!paused)togglePause();buildAchievementCollection();achievementsModal.hidden=false;achievementsClose.focus?.()}
+function closeAchievements(){achievementsModal.hidden=true;if(!achievementsWasPaused&&paused)togglePause();achievementsToggle.focus?.()}
+achievementsToggle.onclick=openAchievements;achievementsClose.onclick=closeAchievements;
+achievementsModal.addEventListener('click',event=>{if(event.target===achievementsModal)closeAchievements()});
 document.querySelectorAll('input[name="character-style"]').forEach(input=>input.addEventListener('change',()=>{if(input.checked)setCharacterStyle(input.value)}));
-window.addEventListener('keydown',event=>{if(event.key!=='Escape')return;if(!boardEditor.hidden){event.preventDefault();closeBoardEditor();return}if(!settingsModal.hidden){event.preventDefault();closeSettings()}});
+window.addEventListener('keydown',event=>{if(event.key!=='Escape')return;if(!boardEditor.hidden){event.preventDefault();closeBoardEditor();return}if(!achievementsModal.hidden){event.preventDefault();closeAchievements();return}if(!settingsModal.hidden){event.preventDefault();closeSettings()}});
 let last=performance.now();function frame(now){const dt=Math.min((now-last)/1000,.04);last=now;update(dt);gameAudio.update(dt,{mode,speed:car.speed,paused,raining:weather==='rain',seats:family.filter(p=>p.aboard).map(p=>p.seated&&!p.sleeping&&!p.passenger&&Number.isInteger(p.station)&&p.station<workstations.length)});draw();requestAnimationFrame(frame)}
-setCharacterStyle(characterStyle);loadFamilyPhotos();requestAnimationFrame(frame);
+$('achievement-value').textContent='0/'+Object.keys(achievementDefinitions).length;setCharacterStyle(characterStyle);loadFamilyPhotos();requestAnimationFrame(frame);
