@@ -2,7 +2,7 @@
 
 Samodzielny prototyp pikselowej gry inspirowany szkicem `images/car-game-design.jpg`.
 
-Otwórz `index.html` w przeglądarce. Gra nie wymaga instalowania zależności ani kompilacji.
+Uruchom grę przez PHP (minimum PHP 8), na przykład `php -S localhost:8080`, i otwórz `http://localhost:8080`. Serwer jest potrzebny do zapisywania postaci i Tablicy; gra nie wymaga kompilacji ani instalowania pakietów.
 
 - **1 / 2 / 3 / 4 / 5** lub karty po prawej: wybór osoby znajdującej się w samochodzie.
 - **E**: wstań, usiądź przy swoim stanowisku, przejmij kierownicę przy kabinie lub wróć do wnętrza.
@@ -13,7 +13,11 @@ Dolne drzwi samochodu prowadzą teraz do szkolnej przyczepki — podejdź do nic
 
 Każda osoba może wysiąść. Gdy ostatnia osoba opuszcza samochód, auto zatrzymuje się i gra przechodzi do trybu spaceru po mieście. Postacie poruszają się po mapie standardowym joystickiem lub klawiszami WASD. Zaparkowany samochód ma własny złoty wskaźnik kierunku; po podejściu można wrócić do środka. Na mapie można znaleźć oznaczone sklepy i stacje benzynowe.
 
-W szkolnej przyczepce znajdują się dwa rzędy po trzy jednoosobowe ławki, stolik nauczyciela oraz tablica kredowa. Przy ławkach i miejscu nauczyciela siada się klawiszem **E**. Każda osoba może podejść do tablicy, nacisnąć **E**, rysować białą kredą, wpisywać tekst i ścierać wybrane fragmenty gąbką. **Esc** zapisuje tablicę i wraca do klasy; kolejna osoba zobaczy zapisaną zawartość.
+W szkolnej przyczepce znajdują się dwa rzędy po trzy jednoosobowe ławki, stolik nauczyciela oraz tablica kredowa. Przy ławkach i miejscu nauczyciela siada się klawiszem **E**. Każda osoba może podejść do tablicy, nacisnąć **E**, rysować białą kredą i ścierać wybrane fragmenty gąbką. **Esc** zapisuje obraz tablicy na serwerze i wraca do klasy; kolejna osoba zobaczy zapisaną zawartość.
+
+W **Ustawieniach** znajduje się pula postaci przechowywana na serwerze. Kreator pozwala podać imię i kolor ubrania, wysłać zdjęcie oraz wybrać kadr głowy za pomocą Cropper.js. Przed zapisem pokazuje gotową postać. Serwer zapisuje oryginalne zdjęcie, wykadrowany portret, kolor, imię i parametry kadru. Postać z puli można dodać do trwającej gry; trafia do aktualnie oglądanego samochodu lub szkoły, a w widoku miasta pojawia się obok auta.
+
+Dane runtime znajdują się w `data/` (katalog musi być zapisywalny dla procesu PHP). Endpointy to `GET/POST api/characters.php` oraz `GET/PUT api/board.php`. Kreator przyjmuje JPG, PNG lub WebP i przed wysłaniem optymalizuje duże fotografie do limitu 2 MB zgodnego z typową konfiguracją PHP.
 
 Radio znajduje się na desce rozdzielczej przy przednim prawym fotelu pasażera. Wstań od stanowiska, podejdź do tego fotela i użyj **E** lub **Usiądź przy radiu**. Z fotela obsługujesz przyciski radia pod grą: poprzedni/następny utwór oraz włącznik. Na klawiaturze działa też **R** (włącz/wyłącz) i **[ / ]** (utwór). **E / Wstań z fotela** pozwala wrócić do spacerowania. Fotel zajmuje jedna osoba naraz; aby obsługiwać radio, wybierz siedzącego na nim pasażera.
 

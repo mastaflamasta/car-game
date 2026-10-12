@@ -134,7 +134,7 @@ const gameAudio=(()=>{
     engine.frequency.setTargetAtTime(38+speed*95,context.currentTime,.12);
     engineGain.gain.setTargetAtTime((state.mode==='interior'?.09:.14)+speed*.045,context.currentTime,.12);
     streetGain.gain.setTargetAtTime((state.mode==='interior'?.012:.027)+speed*.024,context.currentTime,.2);
-    const rainLevel=!state.raining?0:state.mode==='interior'||state.mode==='driving'?.075:state.mode==='outside'?.025:.035;
+    const rainLevel=!state.raining?0:state.mode==='outside'||state.mode==='driving'?.095:state.mode==='interior'?.038:.02;
     rainGain.gain.setTargetAtTime(rainLevel,context.currentTime,.25);
     if(switched){tone(state.mode==='driving'?440:660);tone(state.mode==='driving'?660:440,.12)}
     else if(seatChanged)tone(280);

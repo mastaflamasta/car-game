@@ -17,8 +17,8 @@ const schoolSeats=[
 const schoolSeatZones=schoolSeats.map(seat=>({left:seat.x-17,right:seat.x+17,top:seat.y+13,bottom:seat.y+28}));
 const schoolDoorZone={left:-15,right:15,top:-91,bottom:-68},teacherZone={left:-50,right:-19,top:-72,bottom:-53},boardZone={left:11,right:53,top:-25,bottom:-11};
 const family=[
-  {name:'Mama',pickupName:'Mamę',role:'Odpoczywa na kanapie',color:'#d88860',hair:'#9a5239',hairStyle:'bob',glasses:true,x:40,y:58,station:3,seated:true,aboard:true,closeness:0},
-  {name:'Tata',pickupName:'Tatę',role:'Odpoczywa na kanapie',color:'#679b91',hair:'#423c36',hairStyle:'short',x:40,y:79,station:4,seated:true,aboard:true,closeness:0},
+  {name:'Dagmara',pickupName:'Dagmarę',role:'Odpoczywa na kanapie',color:'#d88860',hair:'#9a5239',hairStyle:'bob',glasses:true,x:40,y:58,station:3,seated:true,aboard:true,closeness:0},
+  {name:'Andrzej',pickupName:'Andrzeja',role:'Odpoczywa na kanapie',color:'#679b91',hair:'#423c36',hairStyle:'short',x:40,y:79,station:4,seated:true,aboard:true,closeness:0},
   {name:'Nela',pickupName:'Nelę',role:'Tworzy na laptopie',color:'#c4ad66',hair:'#b97838',hairStyle:'long',x:-38,y:69,station:2,seated:true,aboard:true,closeness:0},
   {name:'Tosia',pickupName:'Tosię',role:'Czeka na rodzinę',color:'#c98b75',hair:'#b34e2e',hairStyle:'bob',glasses:true,x:0,y:0,station:null,seated:false,aboard:false,pickup:{x:410,y:-50},closeness:0},
   {name:'Łucja',pickupName:'Łucję',role:'Czeka na rodzinę',color:'#8aa5b2',hair:'#51352e',hairStyle:'short',glasses:true,x:0,y:0,station:null,seated:false,aboard:false,pickup:{x:760,y:-230},closeness:0},
@@ -27,8 +27,8 @@ const family=[
 family.forEach(member=>{member.room=member.aboard?'car':'outside';member.joined=member.aboard;member.schoolSeat=null;member.teacher=false;member.sleeping=false;member.speech=null;member.driving=false});
 // Each crop is measured relative to its original photograph.
 const familyPhotos=[
-  {label:'Mama · Dagmara',src:'images/mama-dagmara.jpg',pixel:'images/mama-dagmara-pixel.png',pixelCrop:[.12,.02,.76,.89],crop:[.05,.025,.88,.81]},
-  {label:'Tata · Andrzej',src:'images/tata-andrzej.jpg',pixel:'images/tata-andrzej-pixel.png',pixelCrop:[.13,.01,.74,.86],crop:[.025,.015,.92,.875]},
+  {label:'Dagmara',src:'images/mama-dagmara.jpg',pixel:'images/mama-dagmara-pixel.png',pixelCrop:[.12,.02,.76,.89],crop:[.05,.025,.88,.81]},
+  {label:'Andrzej',src:'images/tata-andrzej.jpg',pixel:'images/tata-andrzej-pixel.png',pixelCrop:[.13,.01,.74,.86],crop:[.025,.015,.92,.875]},
   {label:'Córka · Nela',src:'images/corka-nela.jpg',pixel:'images/corka-nela-pixel.png',pixelCrop:[.08,.01,.84,.98],crop:[.04,.015,.92,.875]},
   {label:'Córka · Tosia',srcs:['images/corka-tosia.jpg','images/corka-tosia.png'],pixel:'images/corka-tosia-pixel.png',pixelCrop:[.08,.01,.84,.98],crop:[0,.03,1,.91]},
   {label:'Córka · Łucja',srcs:['images/corka-łucja.jpg','images/corka-łucja.png','images/corka-lucja.jpg','images/corka-lucja.png'],pixel:'images/corka-łucja-pixel.png',pixelCrop:[.1,.01,.8,.93],crop:[0,.04,1,.875]},
@@ -69,7 +69,7 @@ const achievementDefinitions={
   daughters:{title:'Dzieci pracują, rodzice chillują',description:'Trzy córki przy komputerach. Rodzice mogą wreszcie przejść na tryb relaks.'},
   liberianGirl:{title:'Król Popu odnaleziony!',description:'Hee-hee! Liberian Girl trafiła do rodzinnego radia. Michael byłby dumny z tej trasy.'},
   allAboard:{title:'Rodzina w komplecie',description:'Wszyscy są na pokładzie. Teraz pozostaje tylko ustalić, dokąd właściwie jedziemy.'},
-  parentsWork:{title:'Rodzice jednak pracują',description:'Mama i Tata przy komputerach. Pogłoski o wiecznych wakacjach zostały zdementowane.'},
+  parentsWork:{title:'Rodzice jednak pracują',description:'Dagmara i Andrzej przy komputerach. Pogłoski o wiecznych wakacjach zostały zdementowane.'},
   remote2000:{title:'Praca zdalna, widok lokalny',description:'2000 monet zarobionych w drodze. Biuro z takim widokiem trudno przebić.'},
   allDrivers:{title:'Kto prowadzi ten dom?',description:'Każdy członek rodziny przejął kierownicę. Odpowiedź nadal pozostaje niejasna.'},
   scratches:{title:'To tylko rysa',description:'Pięć spotkań z przeszkodami. Lakier nabiera rodzinnego charakteru.'},
@@ -91,37 +91,31 @@ const keys=new Set();
 const touchKeys=new Set();
 const touchHint=(mobile,keyboard)=>window.matchMedia('(max-width:820px)').matches?mobile:keyboard;
 const rect=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),w,h)};
+const escapeHtml=value=>String(value).replace(/[&<>'"]/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character]));
 const characterArt=p=>characterStyle==='pixel'&&p.pixel?p.pixel:p.face;
 const characterPortraitArt=p=>characterStyle==='pixel'&&p.pixel?p.pixel:p.face;
-function drawPixelHead(p,x,y){
+function drawPixelHead(p,x,y,sleeping=false){
   const skin='#e2b88d',line='#40352f',light='#f0c69a';
   if(p.hairStyle==='long'){rect(x-7,y-11,14,14,p.hair);rect(x-8,y-8,3,13,p.hair);rect(x+5,y-8,3,13,p.hair)}
   else if(p.hairStyle==='bob'){rect(x-7,y-11,14,12,p.hair);rect(x-7,y-7,3,10,p.hair);rect(x+5,y-7,3,10,p.hair)}
   else rect(x-6,y-11,12,7,p.hair);
   rect(x-5,y-8,10,9,skin);rect(x-4,y-8,8,2,p.hair);rect(x-5,y-7,2,3,p.hair);
-  if(p.glasses){rect(x-5,y-5,4,1,line);rect(x-5,y-2,4,1,line);rect(x-5,y-5,1,4,line);rect(x-2,y-5,1,4,line);rect(x+1,y-5,4,1,line);rect(x+1,y-2,4,1,line);rect(x+1,y-5,1,4,line);rect(x+4,y-5,1,4,line);rect(x-1,y-4,2,1,line)}
+  if(sleeping){rect(x-4,y-4,3,1,line);rect(x+2,y-4,3,1,line);rect(x-3,y-3,2,1,'#8f6f5b');rect(x+2,y-3,2,1,'#8f6f5b')}
+  else if(p.glasses){rect(x-5,y-5,4,1,line);rect(x-5,y-2,4,1,line);rect(x-5,y-5,1,4,line);rect(x-2,y-5,1,4,line);rect(x+1,y-5,4,1,line);rect(x+1,y-2,4,1,line);rect(x+1,y-5,1,4,line);rect(x+4,y-5,1,4,line);rect(x-1,y-4,2,1,line)}
   else{rect(x-3,y-4,1,1,line);rect(x+2,y-4,1,1,line)}
-  rect(x-1,y-1,3,1,p.name==='Tata'?'#8f644f':'#b85e5a');rect(x-4,y-7,2,1,light);
+  rect(x-1,y-1,3,1,p.name==='Andrzej'?'#8f644f':'#b85e5a');rect(x-4,y-7,2,1,light);
 }
-function drawSleepMask(x,y){
-  rect(x-9,y-7,18,2,'#17151d');
-  rect(x-7,y-8,14,3,'#17151d');rect(x-7,y-5,6,3,'#17151d');rect(x+1,y-5,6,3,'#17151d');
-  rect(x-5,y-7,4,2,'#302b3a');rect(x+1,y-7,4,2,'#302b3a');
-  rect(x-5,y-5,3,1,'#272330');rect(x+2,y-5,3,1,'#272330');
-}
+function drawSleepingEyes(){rect(-5,-4,4,1,'#302b2b');rect(2,-4,4,1,'#302b2b');rect(-4,-3,2,1,'#8f6f5b');rect(2,-3,2,1,'#8f6f5b')}
 function person(p,x,y,dir=0,walking=false){
-  const step=walking?Math.sin(time*15)*2:0;
+  const step=walking?Math.sin(time*15)*2:0,sleepBob=p.sleeping?Math.round((Math.sin(time*3)+1)*.5):0;y+=sleepBob;
   rect(x-5,y+7,4,5+step,'#303e39');rect(x+1,y+7,4,5-step,'#303e39');
   rect(x-7,y,14,9,p.color);rect(x-9,y+1,3,6,'#e2b88d');rect(x+6,y+1,3,6,'#e2b88d');
   const art=characterArt(p);
+  ctx.save();ctx.translate(Math.round(x+(p.sleeping?1:0)),Math.round(y-6));if(p.sleeping)ctx.rotate(.09);
   if(art){
-    ctx.save();ctx.imageSmoothingEnabled=characterStyle!=='pixel';if(characterStyle!=='pixel')ctx.imageSmoothingQuality='high';
-    ctx.drawImage(art,Math.round(x-9),Math.round(y-17),18,21);ctx.restore();
-    if(p.sleeping)drawSleepMask(x,y);
-    return;
-  }
-  drawPixelHead(p,x,y);
-  if(p.sleeping)drawSleepMask(x,y);
+    ctx.imageSmoothingEnabled=characterStyle!=='pixel';if(characterStyle!=='pixel')ctx.imageSmoothingQuality='high';ctx.drawImage(art,-9,-11,18,21);if(p.sleeping)drawSleepingEyes();
+  }else drawPixelHead(p,0,0,p.sleeping);
+  ctx.restore();
 }
 function familyStatus(p,i){
   if(p.room==='outside')return mode==='outside'&&i===selected?'Spaceruje po mieście':'Na zewnątrz';
@@ -137,11 +131,11 @@ function buildFamily(){
   const displayed=family.map((p,i)=>({p,i})).filter(({p})=>p.joined);
   const familyList=$('family');
   familyList.setAttribute('data-family-count',String(displayed.length));
-  familyList.innerHTML=displayed.map(({p,i})=>`<button class="person ${i===selected?'active':''}" data-person="${i}" aria-pressed="${i===selected}"><canvas class="portrait ${characterStyle==='photo'&&p.face?'photo-portrait':'pixel-portrait'}" width="96" height="112" id="portrait-${i}" aria-hidden="true"></canvas><span class="person-info"><strong>${familyPhotos[i].label}</strong><small>${familyStatus(p,i)}</small></span><span class="shortcut">${i+1}</span></button>`).join('');
+  familyList.innerHTML=displayed.map(({p,i})=>`<button class="person ${i===selected?'active':''}" data-person="${i}" aria-pressed="${i===selected}"><canvas class="portrait ${characterStyle==='photo'&&p.face?'photo-portrait':'pixel-portrait'}" width="96" height="112" id="portrait-${i}" aria-hidden="true"></canvas><span class="person-info"><strong>${escapeHtml(familyPhotos[i].label)}</strong><small>${escapeHtml(familyStatus(p,i))}</small></span><span class="shortcut">${i+1}</span></button>`).join('');
   displayed.forEach(({p,i})=>{const c=$('portrait-'+i).getContext('2d');c.fillStyle='#34402d';c.fillRect(0,0,24,28);c.fillStyle=p.color;c.fillRect(5,16,14,12);c.fillStyle=p.hair;c.fillRect(6,4,12,13);c.fillStyle='#e2b88d';c.fillRect(7,9,10,9);c.fillStyle='#35352f';c.fillRect(9,12,2,2);c.fillRect(14,12,2,2)});
   displayed.forEach(({p,i})=>{const c=$('portrait-'+i).getContext('2d'),art=characterPortraitArt(p);if(art){c.clearRect(0,0,96,112);c.imageSmoothingEnabled=characterStyle!=='pixel';if(characterStyle==='pixel'){const ratio=Math.min(96/art.naturalWidth,112/art.naturalHeight),w=art.naturalWidth*ratio,h=art.naturalHeight*ratio;c.drawImage(art,(96-w)/2,(112-h)/2,w,h)}else c.drawImage(art,0,0,96,112)}else{const fallback=document.createElement('canvas');fallback.width=24;fallback.height=28;fallback.getContext('2d').drawImage(c.canvas,0,0,24,28,0,0,24,28);c.clearRect(0,0,96,112);c.imageSmoothingEnabled=false;c.drawImage(fallback,0,0,96,112)}});
   document.querySelectorAll('[data-person]').forEach(b=>b.onclick=()=>selectPerson(+b.dataset.person));
-  if($('aboard-count'))$('aboard-count').textContent=String(aboard.length).padStart(2,'0')+' / 06';
+  if($('aboard-count'))$('aboard-count').textContent=String(aboard.length).padStart(2,'0')+' / '+String(family.length).padStart(2,'0');
 }
 function toast(s){$('toast').textContent=s;toastTimer=4}
 function showCharacterDialog(p,messages,upset=false){
@@ -157,11 +151,11 @@ function unlockAchievement(id){if(unlockedAchievements[id]||!achievementDefiniti
 function hideAchievement(){
   if(!visibleAchievement)return;const card=$('achievement-card');visibleAchievement=null;card.classList.add('closing');window.clearTimeout(achievementHideTimer);achievementHideTimer=window.setTimeout(()=>{card.hidden=true;card.classList.remove('closing');const next=pendingAchievements.shift();if(next)presentAchievement(next)},300);
 }
-document.addEventListener('pointerdown',()=>hideAchievement());
+$('achievement-card').addEventListener('pointerdown',event=>{event.stopPropagation();hideAchievement()});
 function checkWorkAchievements(){
   const daughters=['Nela','Tosia','Łucja'];const workers=activeWorkers();
   if(daughters.every(name=>workers.some(worker=>worker.name===name)))unlockAchievement('daughters');
-  const parentsWorking=['Mama','Tata'].every(name=>workers.some(worker=>worker.name===name)),childrenWorking=daughters.some(name=>workers.some(worker=>worker.name===name));
+  const parentsWorking=['Dagmara','Andrzej'].every(name=>workers.some(worker=>worker.name===name)),childrenWorking=daughters.some(name=>workers.some(worker=>worker.name===name));
   if(parentsWorking&&!childrenWorking)unlockAchievement('parentsWork');
 }
 function checkRadioAchievement(){const radio=gameAudio.radioState?.();if(radio?.id==='liberian-girl'&&radio.playing)unlockAchievement('liberianGirl')}
@@ -251,19 +245,30 @@ const boardEditor=$('board-editor'),schoolBoard=$('school-board'),boardCtx=schoo
 const boardCloseButton=document.createElement('button');boardCloseButton.id='close-school-board';boardCloseButton.type='button';boardCloseButton.textContent='Zapisz i zamknij';boardCloseButton.setAttribute('aria-label','Zapisz tablicę i wróć do klasy');boardEditor.querySelector('.board-heading').append(boardCloseButton);
 let boardTool='chalk',boardDrawing=false,boardTextPoint={x:40,y:55},boardLoaded=false;
 function blankSchoolBoard(){boardCtx.fillStyle='#183b31';boardCtx.fillRect(0,0,schoolBoard.width,schoolBoard.height)}
-function loadSchoolBoard(){
-  if(boardLoaded)return;boardLoaded=true;blankSchoolBoard();let saved='';try{saved=window.localStorage?.getItem('roadfamily-school-board')||''}catch{}
-  if(saved){const image=new Image();image.onload=()=>boardCtx.drawImage(image,0,0);image.src=saved}
+async function loadSchoolBoard(){
+  if(boardLoaded)return;boardLoaded=true;blankSchoolBoard();if(typeof fetch!=='function')return;
+  try{
+    const response=await fetch('api/board.php',{cache:'no-store'});
+    if(response.status===204)return;
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    const image=new Image(),url=URL.createObjectURL(await response.blob());
+    image.onload=()=>{boardCtx.drawImage(image,0,0);URL.revokeObjectURL(url)};image.src=url;
+  }catch(error){console.warn('Nie udało się pobrać tablicy z serwera.',error)}
 }
 function setBoardTool(tool){boardTool=tool;$('chalk-tool').classList.toggle('active',tool==='chalk');$('sponge-tool').classList.toggle('active',tool==='sponge');$('chalk-tool').setAttribute('aria-pressed',String(tool==='chalk'));$('sponge-tool').setAttribute('aria-pressed',String(tool==='sponge'))}
 function boardPoint(event){const box=schoolBoard.getBoundingClientRect();return{x:(event.clientX-box.left)*schoolBoard.width/box.width,y:(event.clientY-box.top)*schoolBoard.height/box.height}}
 function drawBoardStroke(from,to){boardCtx.strokeStyle=boardTool==='chalk'?'#f4f0d8':'#183b31';boardCtx.lineWidth=boardTool==='chalk'?4:24;boardCtx.lineCap='round';boardCtx.lineJoin='round';boardCtx.beginPath();boardCtx.moveTo(from.x,from.y);boardCtx.lineTo(to.x,to.y);boardCtx.stroke()}
 function openBoardEditor(){loadSchoolBoard();boardEditor.hidden=false;keys.clear();window.resetTouchControls?.();setBoardTool('chalk');schoolBoard.focus?.()}
-function closeBoardEditor(){if(boardEditor.hidden)return;try{window.localStorage?.setItem('roadfamily-school-board',schoolBoard.toDataURL('image/png'))}catch{}boardEditor.hidden=true;$('board-text').value='';canvas.focus?.();toast('Zapisano zawartość tablicy.')}
+async function saveSchoolBoard(){
+  if(typeof fetch!=='function'||typeof schoolBoard.toBlob!=='function')return;
+  const blob=await new Promise(resolve=>schoolBoard.toBlob(resolve,'image/png'));
+  if(!blob)throw new Error('Nie udało się utworzyć obrazu tablicy.');
+  const response=await fetch('api/board.php',{method:'PUT',headers:{'Content-Type':'image/png'},body:blob});
+  if(!response.ok)throw new Error('HTTP '+response.status);
+}
+function closeBoardEditor(){if(boardEditor.hidden)return;boardEditor.hidden=true;canvas.focus?.();toast('Zapisywanie tablicy…');saveSchoolBoard().then(()=>toast('Zapisano zawartość tablicy na serwerze.')).catch(error=>{console.warn(error);toast('Nie udało się zapisać tablicy na serwerze.')})}
 $('chalk-tool').onclick=()=>setBoardTool('chalk');$('sponge-tool').onclick=()=>setBoardTool('sponge');
 boardCloseButton.onclick=closeBoardEditor;
-$('write-board-text').onclick=()=>{const text=$('board-text').value.trim();if(!text)return;boardCtx.fillStyle='#f4f0d8';boardCtx.font='24px monospace';boardCtx.textBaseline='top';boardCtx.fillText(text,boardTextPoint.x,boardTextPoint.y,schoolBoard.width-boardTextPoint.x-8);$('board-text').value=''};
-$('board-text').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();$('write-board-text').click()}});
 schoolBoard.addEventListener('pointerdown',event=>{if(event.button!==0)return;event.preventDefault();boardDrawing=true;schoolBoard.setPointerCapture?.(event.pointerId);boardTextPoint=boardPoint(event);drawBoardStroke(boardTextPoint,boardTextPoint)});
 schoolBoard.addEventListener('pointermove',event=>{if(!boardDrawing)return;const next=boardPoint(event);drawBoardStroke(boardTextPoint,next);boardTextPoint=next});
 for(const type of ['pointerup','pointercancel','lostpointercapture'])schoolBoard.addEventListener(type,()=>{boardDrawing=false});
@@ -271,7 +276,8 @@ function togglePause(){paused=!paused;keys.clear();window.resetTouchControls?.()
 $('pause').onclick=togglePause;
 function interact(){
   if(paused)return;
-  window.resetTouchControls?.();
+  const keepDrivingControls=mode==='driving'&&!!waitingFamilyNearCar();
+  if(!keepDrivingControls)window.resetTouchControls?.();
   const p=family[selected];
   if(mode==='outside'){
     if(!outsidePersonNearCar(p)){toast('Podejdź bliżej zaparkowanego samochodu.');return}
@@ -365,7 +371,9 @@ function worldObstacleAt(px,py){
   const baseI=Math.floor(px/350),baseJ=Math.floor(py/350);
   for(let i=baseI-1;i<=baseI+1;i++)for(let j=baseJ-1;j<=baseJ+1;j++){
     const x=i*350,y=j*350;
-    if(px>x+69&&px<x+265&&py>y+63&&py<y+249)return'building';
+    // The darker offset rectangle is only a painted shadow. Collisions follow
+    // the actual wall footprint, so pedestrians and cars may cross the shadow.
+    if(px>x+79&&px<x+245&&py>y+73&&py<y+209)return'building';
     for(const [treeX,treeY] of [[x+66,y+250],[x+265,y+84],[x+247,y+261]])if(Math.hypot(px-treeX,py-treeY)<25)return'tree';
     if(hitsVehicle(px,py,x+34,y+146,0)||hitsVehicle(px,py,x+168,y-30,Math.PI/2))return'vehicle';
     const trafficY=y+80+((time*24+hash(i,j)*220)%230);if(hitsVehicle(px,py,x-24,trafficY,Math.PI))return'vehicle';
@@ -573,14 +581,23 @@ function setCharacterStyle(style){
   buildFamily();
 }
 window.setCharacterStyle=setCharacterStyle;
+window.addServerCharacter=function(record){
+  if(!record?.id||family.some(member=>member.serverId===record.id))return false;
+  const inSchool=mode==='school',inCity=mode==='driving'||mode==='outside';
+  const member={serverId:record.id,name:record.name,pickupName:record.name,role:'Nowa postać',color:record.color,hair:'#49382f',hairStyle:'short',x:0,y:inSchool?-42:38,station:null,seated:false,aboard:!inCity,joined:true,closeness:0,room:inSchool?'school':inCity?'outside':'car',schoolSeat:null,teacher:false,sleeping:false,speech:null,driving:false,passenger:false};
+  if(inCity)member.pickup={x:car.x+70*Math.cos(car.angle),y:car.y+70*Math.sin(car.angle)};
+  family.push(member);familyPhotos.push({label:record.name,src:record.portraitUrl,pixel:record.portraitUrl,crop:[0,0,1,1],pixelCrop:[0,0,1,1]});
+  const portrait=new Image();portrait.onload=()=>{member.face=portrait;member.pixel=portrait;buildFamily()};portrait.src=record.portraitUrl;
+  buildFamily();toast(record.name+(inCity?' czeka obok samochodu.':inSchool?' pojawia się w szkolnej przyczepce.':' dołącza do wnętrza samochodu.'));return true;
+};
 const settingsModal=$('settings-modal'),settingsToggle=$('settings-toggle'),settingsClose=$('settings-close');let settingsWasPaused=false;
 function openSettings(){settingsWasPaused=paused;if(!paused)togglePause();settingsModal.hidden=false;document.querySelector(`input[name="character-style"][value="${characterStyle}"]`)?.focus()}
-function closeSettings(){settingsModal.hidden=true;if(!settingsWasPaused&&paused)togglePause();settingsToggle.focus?.()}
+function closeSettings(){settingsModal.hidden=true;if(!settingsWasPaused&&paused)togglePause();canvas.focus?.()}
 settingsToggle.onclick=openSettings;settingsClose.onclick=closeSettings;
 settingsModal.addEventListener('click',event=>{if(event.target===settingsModal)closeSettings()});
 const achievementsModal=$('achievements-modal'),achievementsToggle=$('achievement-counter'),achievementsClose=$('achievements-close');let achievementsWasPaused=false;
 function openAchievements(){achievementsWasPaused=paused;if(!paused)togglePause();buildAchievementCollection();achievementsModal.hidden=false;achievementsClose.focus?.()}
-function closeAchievements(){achievementsModal.hidden=true;if(!achievementsWasPaused&&paused)togglePause();achievementsToggle.focus?.()}
+function closeAchievements(){achievementsModal.hidden=true;if(!achievementsWasPaused&&paused)togglePause();canvas.focus?.()}
 achievementsToggle.onclick=openAchievements;achievementsClose.onclick=closeAchievements;
 achievementsModal.addEventListener('click',event=>{if(event.target===achievementsModal)closeAchievements()});
 document.querySelectorAll('input[name="character-style"]').forEach(input=>input.addEventListener('change',()=>{if(input.checked)setCharacterStyle(input.value)}));
