@@ -614,7 +614,7 @@ window.addServerCharacter=function(record){
   const member={serverId:record.id,name:record.name,pickupName:record.name,role:'Nowa postać',color:record.color,hair:'#49382f',hairStyle:'short',x:0,y:inSchool?-42:38,station:null,seated:false,aboard:!inCity,joined:true,closeness:0,room:inSchool?'school':inCity?'outside':'car',schoolSeat:null,teacher:false,sleeping:false,speech:null,driving:false,passenger:false};
   if(inCity)member.pickup={x:car.x+70*Math.cos(car.angle),y:car.y+70*Math.sin(car.angle)};
   family.push(member);familyPhotos.push({label:record.name,src:record.portraitUrl,pixel:record.portraitUrl,crop:[0,0,1,1],pixelCrop:[0,0,1,1]});
-  const portrait=new Image();portrait.onload=()=>{member.face=portrait;member.pixel=portrait;buildFamily()};portrait.src=record.portraitUrl;
+  const portrait=new Image();portrait.onload=()=>{const face=document.createElement('canvas');face.width=192;face.height=224;const faceContext=face.getContext('2d');faceContext.beginPath();faceContext.ellipse(96,112,96,112,0,0,Math.PI*2);faceContext.clip();faceContext.drawImage(portrait,0,0,192,224);member.face=face;member.pixel=face;buildFamily()};portrait.src=record.portraitUrl;
   buildFamily();toast(record.name+(inCity?' czeka obok samochodu.':inSchool?' pojawia się w szkolnej przyczepce.':' dołącza do wnętrza samochodu.'));return true;
 };
 const settingsModal=$('settings-modal'),settingsToggle=$('settings-toggle'),settingsClose=$('settings-close');let settingsWasPaused=false;

@@ -13,6 +13,10 @@
 
   function setStatus(message,isError=false){status.textContent=message;status.style.color=isError?'#f09b91':'#f0c982'}
   function canvasBlob(canvas,type,quality){return new Promise(resolve=>canvas.toBlob(resolve,type,quality))}
+  function croppedPortrait(width=192,height=224){
+    const crop=cropper.getCroppedCanvas({width,height,imageSmoothingEnabled:true,imageSmoothingQuality:'high'}),portrait=document.createElement('canvas');portrait.width=width;portrait.height=height;
+    const context=portrait.getContext('2d');context.beginPath();context.ellipse(width/2,height/2,width/2,height/2,0,0,Math.PI*2);context.clip();context.drawImage(crop,0,0,width,height);return portrait;
+  }
   async function uploadPhoto(file){
     if(file.size<=1_500_000)return file;
     const maximumSide=1600,scale=Math.min(1,maximumSide/Math.max(source.naturalWidth,source.naturalHeight));
@@ -30,7 +34,7 @@
     previewContext.fillStyle=byId('character-color').value;previewContext.fillRect(20,88,56,36);
     previewContext.fillStyle='#e2b88d';previewContext.fillRect(12,92,12,24);previewContext.fillRect(72,92,12,24);
     if(cropper){
-      const face=cropper.getCroppedCanvas({width:96,height:112,imageSmoothingEnabled:true,imageSmoothingQuality:'high'});
+      const face=croppedPortrait(96,112);
       previewContext.imageSmoothingEnabled=true;previewContext.imageSmoothingQuality='high';previewContext.drawImage(face,12,20,72,84);
     }else{
       previewContext.fillStyle='#49382f';previewContext.fillRect(24,20,48,52);previewContext.fillStyle='#e2b88d';previewContext.fillRect(28,48,40,36);
@@ -84,7 +88,7 @@
     try{
       const name=byId('character-name').value.trim();
       if(!name||name.length>40)throw new Error('Imię musi mieć od 1 do 40 znaków.');
-      const portraitCanvas=cropper.getCroppedCanvas({width:192,height:224,imageSmoothingEnabled:true,imageSmoothingQuality:'high'});
+      const portraitCanvas=croppedPortrait();
       const portrait=await new Promise(resolve=>portraitCanvas.toBlob(resolve,'image/png'));
       if(!portrait)throw new Error('Nie udało się przygotować portretu.');
       const preparedPhoto=await uploadPhoto(file);
