@@ -7,7 +7,7 @@
   poolSection.innerHTML='<div class="character-pool-heading"><div><span>POSTACI Z SERWERA</span><small>Dodaj zapisaną postać do bieżącej gry.</small></div><button id="new-character" type="button">+ Nowa postać</button></div><div id="character-pool" class="character-pool" aria-live="polite"><p>Wczytywanie puli…</p></div>';
   settingsDialog?.append(poolSection);
 
-  const modal=byId('character-modal'),form=byId('character-form'),photoInput=byId('character-photo'),source=byId('crop-source');
+  const modal=byId('character-modal'),form=byId('character-form'),photoInput=byId('character-photo'),source=byId('crop-source'),cropStage=document.querySelector('.crop-stage');
   const preview=byId('character-preview'),previewContext=preview.getContext('2d'),status=byId('character-form-status');
   let cropper=null,objectUrl='',characters=[];
 
@@ -42,7 +42,7 @@
     byId('character-preview-name').textContent=byId('character-name').value.trim()||'Nowa postać';
   }
 
-  function closeCreator(){modal.hidden=true;cropper?.destroy();cropper=null;if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl='';form.reset();byId('character-color').value='#6f9f91';source.removeAttribute('src');setStatus('');updatePreview();if(!byId('settings-modal').hidden)poolSection.querySelector('#new-character')?.focus();else byId('game')?.focus()}
+  function closeCreator(){modal.hidden=true;cropper?.destroy();cropper=null;if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl='';form.reset();byId('character-color').value='#6f9f91';source.removeAttribute('src');source.hidden=true;cropStage.classList.add('empty');setStatus('');updatePreview();if(!byId('settings-modal').hidden)poolSection.querySelector('#new-character')?.focus();else byId('game')?.focus()}
   function openCreator(){
     modal.hidden=false;setStatus(window.Cropper?'Wybierz zdjęcie, a potem ustaw kadr głowy.':'Nie udało się wczytać biblioteki kadrowania.',!window.Cropper);
     byId('character-name').focus();updatePreview();
@@ -50,7 +50,7 @@
 
   photoInput.addEventListener('change',()=>{
     const file=photoInput.files?.[0];if(!file)return;
-    if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=URL.createObjectURL(file);cropper?.destroy();
+    if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=URL.createObjectURL(file);cropper?.destroy();source.hidden=false;cropStage.classList.remove('empty');
     source.onload=()=>{
       if(!window.Cropper)return;
       cropper=new Cropper(source,{aspectRatio:6/7,viewMode:1,dragMode:'move',autoCropArea:.75,background:false,responsive:true,crop:updatePreview,ready:updatePreview});
@@ -87,7 +87,7 @@
     const submit=form.querySelector('[type=submit]');submit.disabled=true;setStatus('Zapisywanie postaci…');
     try{
       const name=byId('character-name').value.trim();
-      if(!name||name.length>40)throw new Error('Imię musi mieć od 1 do 40 znaków.');
+      if(!name||name.length>12)throw new Error('Imię musi mieć od 1 do 12 znaków.');
       const portraitCanvas=croppedPortrait();
       const portrait=await new Promise(resolve=>portraitCanvas.toBlob(resolve,'image/png'));
       if(!portrait)throw new Error('Nie udało się przygotować portretu.');

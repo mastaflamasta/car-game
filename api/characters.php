@@ -18,7 +18,7 @@ if (empty($_POST) && empty($_FILES) && (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 
 $name = trim((string)($_POST['name'] ?? ''));
 $color = strtolower((string)($_POST['color'] ?? ''));
 $crop = json_decode((string)($_POST['crop'] ?? ''), true);
-if ($name === '' || mb_strlen($name) > 40) jsonResponse(['error' => 'Imię musi mieć od 1 do 40 znaków.'], 422);
+if ($name === '' || mb_strlen($name) > 12) jsonResponse(['error' => 'Imię musi mieć od 1 do 12 znaków.'], 422);
 if (!preg_match('/^#[0-9a-f]{6}$/', $color)) jsonResponse(['error' => 'Nieprawidłowy kolor ubrania.'], 422);
 if (!is_array($crop) || !isset($crop['x'], $crop['y'], $crop['width'], $crop['height'])) jsonResponse(['error' => 'Brak parametrów kadru.'], 422);
 foreach (['x', 'y', 'width', 'height'] as $key) {
