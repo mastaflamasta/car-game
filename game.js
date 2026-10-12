@@ -61,8 +61,27 @@ const coinParticles=[],heartParticles=[],sleepParticles=[];
 let weather='clear',weatherTimer=45+Math.random()*55,nextCommentIn=16+Math.random()*18,nextSleepIn=32+Math.random()*45,collisionCooldown=0,collisionCount=0;
 const drivenBy=new Set(),hugCounts={};
 let characterDialogTimer=0;
+let characterDialogQueue=[];
 const pickupDialogMessages=['Dzięki!','Co tak długo?','Wreszcie! Ile można czekać?','Dobrze, że jest wolne miejsce!','Następnym razem wyślijcie SMS-a!','Jedziemy, zanim zmienię zdanie!'];
 const kasiaDialogMessages=['Nie chcę!','Nie teraz!','Mam dziś inne plany!','Nie wsiadam bez playlisty na poziomie!'];
+const streetDialogues=[
+  ['Dokąd idziesz?','Przed siebie. Brzmi jak plan.','To idę przed siebie obok ciebie.'],
+  ['Widziałaś nasz samochód?','Tak. Trudno go nie zauważyć.','Czyli kamuflaż znowu nie zadziałał.'],
+  ['Masz może mapę?','Mam, ale jesteśmy poza jej krawędzią.','Czyli dotarliśmy dalej niż planowaliśmy!'],
+  ['Pada czy ktoś myje mi okulary?','Pada. I chyba bardzo dokładnie.','Przynajmniej będą czyste.'],
+  ['Daleko jeszcze?','Zależy, dokąd idziemy.','Tego właśnie próbuję się dowiedzieć.'],
+  ['Słyszałaś ten dziwny silnik?','To nasz samochód.','A więc wszystko w normie.'],
+  ['Może wracamy do auta?','Za chwilę. Udaję, że znam miasto.','Idzie ci zaskakująco przekonująco.'],
+  ['Zgubiłam zasięg.','Ja zgubiłam kierunek.','Razem mamy komplet podróżnika.'],
+  ['Co robisz na środku miasta?','Czekam na przygodę.','Mogła chociaż napisać SMS-a.'],
+  ['Masz coś do jedzenia?','Mam okruszek i dobre chęci.','Poproszę dobre chęci na wynos.'],
+  ['Wyglądasz, jakbyś znała skrót.','Znam. Jest dwa razy dłuższy.','Idealnie, mamy czas.'],
+  ['Kto dziś prowadzi?','Ten, kto pierwszy znajdzie samochód.','To może jeszcze pospacerujmy.'],
+  ['Ładne miejsce.','Tak, zwłaszcza ten cień budynku.','I można po nim chodzić!'],
+  ['Czemu stoimy?','Bo rozmowa sama się nie przeprowadzi.','Rozsądny argument.'],
+  ['Masz plan na dziś?','Tak: nie zgubić nikogo.','To policzmy się jeszcze raz.'],
+  ['Słyszysz muzykę?','Tak, chyba radio zostało włączone.','Samochód imprezuje bez nas.']
+];
 let kasiaPickupAttempts=0;
 const achievementDefinitions={
   kasia:{title:'Kasia przyjęta do rodziny (Spotify)',description:'Cztery odmowy, jedna dobra playlista i rodzinny plan Spotify jest kompletny.'},
@@ -138,13 +157,19 @@ function buildFamily(){
   if($('aboard-count'))$('aboard-count').textContent=String(aboard.length).padStart(2,'0')+' / '+String(family.length).padStart(2,'0');
 }
 function toast(s){$('toast').textContent=s;toastTimer=4}
-function showCharacterDialog(p,messages,upset=false){
+function showCharacterDialog(p,messages,upset=false,keepQueue=false){
+  if(!keepQueue)characterDialogQueue=[];
   const index=family.indexOf(p),message=messages[Math.floor(Math.random()*messages.length)];
   const portrait=upset?familyPhotos[index].pixel.replace(/\.png$/,'-naburmuszona.png'):familyPhotos[index].pixel;
   $('character-dialog-image').src=portrait;$('character-dialog-image').alt='Pikselowy portret: '+p.name+(upset?' — naburmuszona':'');
   $('character-dialog-name').textContent=p.name;$('character-dialog-message').textContent=message;$('character-dialog').hidden=false;characterDialogTimer=3.6;
 }
-function updateCharacterDialog(dt){if(characterDialogTimer<=0)return;characterDialogTimer=Math.max(0,characterDialogTimer-dt);if(characterDialogTimer===0)$('character-dialog').hidden=true}
+function updateCharacterDialog(dt){if(characterDialogTimer<=0)return;characterDialogTimer=Math.max(0,characterDialogTimer-dt);if(characterDialogTimer===0){const next=characterDialogQueue.shift();if(next){showCharacterDialog(next.person,[next.text],false,true);characterDialogTimer=2.35}else $('character-dialog').hidden=true}}
+function startStreetDialogue(first,second){
+  const lines=streetDialogues[Math.floor(Math.random()*streetDialogues.length)];
+  characterDialogQueue=lines.slice(1).map((text,index)=>({person:index%2===0?second:first,text}));
+  showCharacterDialog(first,[lines[0]],false,true);characterDialogTimer=2.35;
+}
 function presentAchievement(id){const card=$('achievement-card'),achievement=achievementDefinitions[id];window.clearTimeout(achievementHideTimer);visibleAchievement=id;card.classList.remove('closing');$('achievement-title').textContent=achievement.title;$('achievement-description').textContent=achievement.description;card.hidden=false;gameAudio.achievement?.();achievementHideTimer=window.setTimeout(hideAchievement,5000)}
 function buildAchievementCollection(){const ids=Object.keys(unlockedAchievements);$('achievement-list').innerHTML=ids.length?ids.map(id=>{const achievement=achievementDefinitions[id];return`<article class="achievement-list-item"><span aria-hidden="true">★</span><div><strong>${achievement.title}</strong><p>${achievement.description}</p></div></article>`}).join(''):'<p class="achievement-empty">Nie zdobyto jeszcze żadnych achievementów.</p>'}
 function unlockAchievement(id){if(unlockedAchievements[id]||!achievementDefinitions[id])return;unlockedAchievements[id]=true;$('achievement-value').textContent=Object.keys(unlockedAchievements).length+'/'+Object.keys(achievementDefinitions).length;buildAchievementCollection();if(visibleAchievement)pendingAchievements.push(id);else presentAchievement(id)}
@@ -177,6 +202,7 @@ function nearestWorkstation(p){let best=null;cabinSeats.forEach((seat,index)=>{i
 function workstationOccupant(index,p){return family.find(other=>other!==p&&other.seated&&!other.passenger&&other.station===index)}
 function passengerOccupant(p){return family.find(other=>other!==p&&other.passenger)}
 function outsidePersonNearCar(p){return !!p?.pickup&&Math.hypot(p.pickup.x-car.x,p.pickup.y-car.y)<72}
+function outsidePersonNearby(p){if(!p?.pickup)return null;return family.filter(other=>other!==p&&other.room==='outside'&&other.pickup).map(other=>({other,distance:Math.hypot(p.pickup.x-other.pickup.x,p.pickup.y-other.pickup.y)})).filter(candidate=>candidate.distance<=38).sort((a,b)=>a.distance-b.distance)[0]?.other||null}
 function touchingFamilyMember(p){
   if(!p||p.seated||p.passenger)return null;
   return family.filter(other=>other!==p&&other.aboard&&other.room===p.room)
@@ -208,7 +234,7 @@ function interactionUnavailable(){
 function interactionLabel(){
   const p=family[selected];
   if(mode==='driving'){const waiting=waitingFamilyNearCar();return waiting?'Zabierz '+(waiting.pickupName||waiting.name):'Wróć do wnętrza'}
-  if(mode==='outside')return outsidePersonNearCar(p)?'Wejdź do samochodu':'Podejdź do samochodu';
+  if(mode==='outside'){const nearby=outsidePersonNearby(p);return nearby?'Porozmawiaj z '+nearby.name:outsidePersonNearCar(p)?'Wejdź do samochodu':'Podejdź do samochodu'}
   if(p.driving)return'Wstań zza kierownicy';
   if(p.passenger)return'Wstań z fotela';if(p.seated)return'Wstań';
   if(mode==='school'){
@@ -280,15 +306,16 @@ function interact(){
   if(!keepDrivingControls)window.resetTouchControls?.();
   const p=family[selected];
   if(mode==='outside'){
+    const nearby=outsidePersonNearby(p);if(nearby){startStreetDialogue(p,nearby);return}
     if(!outsidePersonNearCar(p)){toast('Podejdź bliżej zaparkowanego samochodu.');return}
-    p.aboard=true;p.joined=true;p.room='car';p.seated=false;p.passenger=false;p.station=null;p.x=46;p.y=-40;mode='interior';buildFamily();toast(p.name+' wraca do samochodu. Auto pozostaje zaparkowane.');return
+    p.aboard=true;p.joined=true;p.room='car';p.seated=false;p.passenger=false;p.station=null;p.pickup=null;p.x=46;p.y=-40;mode='interior';buildFamily();toast(p.name+' wraca do samochodu. Auto pozostaje zaparkowane.');return
   }
   if(mode==='driving'){
     const waiting=waitingFamilyNearCar();
     if(waiting){
       const speedyPickup=Math.abs(car.speed)>=99;
       if(waiting.boardable===false){kasiaPickupAttempts++;if(kasiaPickupAttempts<5){showCharacterDialog(waiting,[kasiaDialogMessages[kasiaPickupAttempts-1]],true);return}waiting.boardable=true}
-      const freeSeat=cabinSeats.findIndex((seat,index)=>!workstationOccupant(index,waiting));waiting.aboard=true;waiting.joined=true;waiting.room='car';waiting.seated=freeSeat>=0;waiting.station=freeSeat>=0?freeSeat:null;if(freeSeat>=0){waiting.x=cabinSeats[freeSeat].x;waiting.y=cabinSeats[freeSeat].y}else{waiting.x=0;waiting.y=38}buildFamily();showCharacterDialog(waiting,waiting.name==='Kasia'?['No dobrze, przekonaliście mnie!']:pickupDialogMessages);if(waiting.name==='Kasia')unlockAchievement('kasia');if(speedyPickup)unlockAchievement('speedyPickup');return}
+      const freeSeat=cabinSeats.findIndex((seat,index)=>!workstationOccupant(index,waiting));waiting.aboard=true;waiting.joined=true;waiting.room='car';waiting.seated=freeSeat>=0;waiting.station=freeSeat>=0?freeSeat:null;waiting.pickup=null;if(freeSeat>=0){waiting.x=cabinSeats[freeSeat].x;waiting.y=cabinSeats[freeSeat].y}else{waiting.x=0;waiting.y=38}buildFamily();showCharacterDialog(waiting,waiting.name==='Kasia'?['No dobrze, przekonaliście mnie!']:pickupDialogMessages);if(waiting.name==='Kasia')unlockAchievement('kasia');if(speedyPickup)unlockAchievement('speedyPickup');return}
     mode='interior';p.driving=false;p.room='car';p.x=-12;p.y=-53;p.seated=false;p.station=null;car.autoX=Math.round(car.x/350)*350;car.speed=0;car.parked=true;buildFamily();toast(p.name+' odchodzi od kierownicy. Samochód jest zatrzymany.');return
   }
   if(mode==='school'){
@@ -520,7 +547,7 @@ function update(dt){
   $('status').textContent=mode==='outside'?p.name+' spaceruje po mieście. Samochód czeka na parkingu.':waitingNearby?(waitingNearby.boardable===false?waitingNearby.name+' jest przy drodze.':waitingNearby.name+' czeka przy drodze — zatrzymaj się i zabierz ją.'):mode==='driving'?p.name+' prowadzi. Szukaj osób przy drodze.':mode==='school'?(p.teacher?p.name+' prowadzi lekcję.':p.seated?p.name+' siedzi przy ławce.':p.name+' jest w szkolnej przyczepce.'):p.passenger?p.name+' przy radiu. Kierowca prowadzi.':p.seated?(p.sleeping?p.name+' zasnął przy komputerze.':'Kierowca prowadzi. Rodzina pracuje.'):p.name+' spaceruje. Kierowca prowadzi.';
   $('move-label').textContent=mode==='driving'?'Gaz / hamulec / skręt':'Poruszanie';$('control-mode').textContent=mode==='driving'?'Nowa perspektywa. Ten sam dom.':mode==='school'?'Mobilna klasa jest gotowa do lekcji.':'W środku jest całkiem przytulnie.';
   $('step-one').classList.toggle('done',walked);$('step-two').classList.toggle('done',p.y<-42||taken);$('step-three').classList.toggle('done',family.filter(member=>member.boardable!==false).every(member=>member.aboard));
-  if(toastTimer<=0){const target=mode==='interior'?nearestWorkstation(p):null,schoolTarget=mode==='school'?nearestSchoolSeat(p):null;$('toast').textContent=mode==='outside'?(outsidePersonNearCar(p)?'E  wejdź do samochodu':'WASD  spaceruj · podążaj za wskaźnikiem auta'):waitingNearby?'E  zabierz '+(waitingNearby.pickupName||waitingNearby.name):mode==='driving'?'W / S  gaz i hamulec     A / D  skręt     E  wróć do wnętrza':mode==='school'?(p.seated?'E  wstań':atSchoolDoor(p)?'E  wróć do samochodu':atSchoolBoard(p)?'E  użyj tablicy':atTeacherPlace(p)?'E  zostań nauczycielem':schoolTarget?'E  usiądź przy ławce':'WASD  spaceruj po klasie'):p.seated?'E  wstań od miejsca     1–6  wybierz osobę':atExitDoor(p)?'E  wejdź do szkoły':atSideExit(p)?'E  wyjdź z samochodu':atDriverPlace(p)?'E  przejmij kierownicę':target?(workstationOccupant(target.index,p)?'To miejsce jest zajęte':'E  usiądź przy wolnym miejscu'):'WASD  spaceruj     Podejdź do kierowcy z przodu ↑'}
+  if(toastTimer<=0){const target=mode==='interior'?nearestWorkstation(p):null,schoolTarget=mode==='school'?nearestSchoolSeat(p):null,outsideFriend=mode==='outside'?outsidePersonNearby(p):null;$('toast').textContent=mode==='outside'?(outsideFriend?'E  porozmawiaj z '+outsideFriend.name:outsidePersonNearCar(p)?'E  wejdź do samochodu':'WASD  spaceruj · podążaj za wskaźnikiem auta'):waitingNearby?'E  zabierz '+(waitingNearby.pickupName||waitingNearby.name):mode==='driving'?'W / S  gaz i hamulec     A / D  skręt     E  wróć do wnętrza':mode==='school'?(p.seated?'E  wstań':atSchoolDoor(p)?'E  wróć do samochodu':atSchoolBoard(p)?'E  użyj tablicy':atTeacherPlace(p)?'E  zostań nauczycielem':schoolTarget?'E  usiądź przy ławce':'WASD  spaceruj po klasie'):p.seated?'E  wstań od miejsca     1–6  wybierz osobę':atExitDoor(p)?'E  wejdź do szkoły':atSideExit(p)?'E  wyjdź z samochodu':atDriverPlace(p)?'E  przejmij kierownicę':target?(workstationOccupant(target.index,p)?'To miejsce jest zajęte':'E  usiądź przy wolnym miejscu'):'WASD  spaceruj     Podejdź do kierowcy z przodu ↑'}
   if(toastTimer<=0&&touchHint(true,false))$('toast').textContent=mode==='driving'?'Joystick: ↑ gaz · ↓ hamulec · ← → skręt':p.seated?'Dotknij „Wstań”. Osobę wybierzesz na jej karcie.':atDriverPlace(p)?'Dotknij „Przejmij kierownicę”.':'Joystick: spacer · Podejdź do kierowcy z przodu ↑';
   if(toastTimer<=0&&atPassengerSeat())$('toast').textContent=touchHint('Steruj radiem przyciskami na ekranie.','R — radio wł. / wył. · [ / ] — utwór · E — wstań');
   else if(toastTimer<=0&&mode==='interior'&&!p.seated&&atPassengerPlace(p))$('toast').textContent=touchHint('Dotknij „Usiądź przy radiu”.','E — usiądź na fotelu pasażera i obsługuj radio');

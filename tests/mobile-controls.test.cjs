@@ -183,6 +183,11 @@ assert.equal(run('family[0].aboard'),false,'A family member can leave through th
 assert.equal(run('selected'),0,'The person who exits remains active');
 assert.equal(run('mode'),'outside','Exiting immediately switches to the outdoor view');
 assert(run('family[0].pickup&&Number.isFinite(family[0].pickup.x)&&Number.isFinite(family[0].pickup.y)'),'The person waits at a valid position on the street');
+run("family[1].aboard=false;family[1].room='outside';family[1].pickup={x:family[0].pickup.x+20,y:family[0].pickup.y}");
+assert.equal(run('interactionLabel()'),'Porozmawiaj z Andrzej','Meeting another person in the city exposes a conversation action');
+run('interact()');assert.equal(element('character-dialog-name').textContent,'Dagmara','A city conversation starts with the active person');
+run('updateCharacterDialog(2.5)');assert.equal(element('character-dialog-name').textContent,'Andrzej','The other person answers in the next dialogue turn');
+run("family[1].aboard=true;family[1].room='car';delete family[1].pickup;characterDialogQueue=[];characterDialogTimer=0;$('character-dialog').hidden=true");
 assert(run("{const dx=family[0].pickup.x-car.x,dy=family[0].pickup.y-car.y;dx*Math.cos(car.angle)+dy*Math.sin(car.angle)}")>0,'The person exits on the right-hand side of the vehicle');
 assert(Math.abs(run("{const dx=family[0].pickup.x-car.x,dy=family[0].pickup.y-car.y;-dx*Math.sin(car.angle)+dy*Math.cos(car.angle)}"))<.001,'The exit point is beside the car rather than in front of it');
 assert.equal(run('hitsPlayerCar(car.x,car.y)'),true,'The parked family car blocks a walking person');
