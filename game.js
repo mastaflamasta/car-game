@@ -16,6 +16,14 @@ const schoolSeats=[
 ];
 const schoolSeatZones=schoolSeats.map(seat=>({left:seat.x-17,right:seat.x+17,top:seat.y+13,bottom:seat.y+28}));
 const schoolDoorZone={left:-15,right:15,top:-91,bottom:-68},teacherZone={left:-50,right:-19,top:-72,bottom:-53},boardZone={left:11,right:53,top:-25,bottom:-11};
+const shopDoorZone={left:-16,right:16,top:70,bottom:92},shopCounterZone={left:-48,right:48,top:-38,bottom:-27};
+const shopCatalog=[
+  {id:'snack',name:'Przekąska',price:10,description:'Małe co nieco na drogę.'},
+  {id:'thermos',name:'Termos',price:20,description:'Ciepły napój na dłuższy postój.'},
+  {id:'teddy',name:'Miś',price:30,description:'Pluszowy pasażer poprawiający humor.'},
+  {id:'umbrella',name:'Parasol',price:40,description:'Przydatny podczas spaceru w deszczu.'}
+];
+const inventory=Object.fromEntries(shopCatalog.map(item=>[item.id,0]));
 const family=[
   {name:'Dagmara',pickupName:'Dagmarę',role:'Odpoczywa na kanapie',color:'#d88860',hair:'#9a5239',hairStyle:'bob',glasses:true,x:40,y:58,station:3,seated:true,aboard:true,closeness:0},
   {name:'Andrzej',pickupName:'Andrzeja',role:'Odpoczywa na kanapie',color:'#679b91',hair:'#423c36',hairStyle:'short',x:40,y:79,station:4,seated:true,aboard:true,closeness:0},
@@ -24,7 +32,7 @@ const family=[
   {name:'Łucja',pickupName:'Łucję',role:'Czeka na rodzinę',color:'#8aa5b2',hair:'#51352e',hairStyle:'short',glasses:true,x:0,y:0,station:null,seated:false,aboard:false,pickup:{x:760,y:-230},closeness:0},
   {name:'Kasia',pickupName:'Kasię',role:'Spaceruje po mieście',color:'#8e768f',hair:'#6b4b3a',hairStyle:'long',glasses:true,x:0,y:0,station:null,seated:false,aboard:false,boardable:false,pickup:{x:-50,y:300},closeness:0}
 ];
-family.forEach(member=>{member.room=member.aboard?'car':'outside';member.joined=member.aboard;member.schoolSeat=null;member.teacher=false;member.sleeping=false;member.speech=null;member.driving=false});
+family.forEach(member=>{member.room=member.aboard?'car':'outside';member.joined=member.aboard;member.schoolSeat=null;member.teacher=false;member.sleeping=false;member.speech=null;member.driving=false;member.carriedItem=null});
 // Each crop is measured relative to its original photograph.
 const familyPhotos=[
   {label:'Dagmara',src:'images/mama-dagmara.jpg',pixel:'images/mama-dagmara-pixel.png',pixelCrop:[.12,.02,.76,.89],crop:[.05,.025,.88,.81]},
@@ -124,7 +132,15 @@ function drawPixelHead(p,x,y,sleeping=false){
   else{rect(x-3,y-4,1,1,line);rect(x+2,y-4,1,1,line)}
   rect(x-1,y-1,3,1,p.name==='Andrzej'?'#8f644f':'#b85e5a');rect(x-4,y-7,2,1,light);
 }
-function drawSleepingEyes(){rect(-5,-4,4,1,'#302b2b');rect(2,-4,4,1,'#302b2b');rect(-4,-3,2,1,'#8f6f5b');rect(2,-3,2,1,'#8f6f5b')}
+function paintItem(c,id,x,y,s=1){
+  const r=(a,b,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x+a*s),Math.round(y+b*s),Math.max(1,Math.round(w*s)),Math.max(1,Math.round(h*s)))};
+  c.save();c.lineWidth=Math.max(1,s);
+  if(id==='snack'){r(-7,-6,14,12,'#d9b946');r(-5,-4,10,8,'#b65343');r(-2,-3,4,6,'#f3de8a')}
+  else if(id==='thermos'){r(-5,-8,10,16,'#5d968d');r(-3,-11,6,3,'#d9e5cd');r(-7,-4,2,8,'#b7d7cc');r(5,-4,2,8,'#294940')}
+  else if(id==='teddy'){c.fillStyle='#9a663f';c.beginPath();c.arc(x-5*s,y-7*s,4*s,0,Math.PI*2);c.arc(x+5*s,y-7*s,4*s,0,Math.PI*2);c.arc(x,y,8*s,0,Math.PI*2);c.fill();r(-5,-2,10,9,'#9a663f');r(-2,-1,4,3,'#d9b080');r(-1,-1,2,2,'#3c3029')}
+  else if(id==='umbrella'){c.strokeStyle='#d9e5cd';c.beginPath();c.arc(x,y+5*s,4*s,0,Math.PI);c.stroke();r(-1,-6,2,12,'#d9e5cd');c.fillStyle='#5b89ad';c.beginPath();c.arc(x,y-5*s,9*s,Math.PI,Math.PI*2);c.fill()}
+  c.restore();
+}
 function person(p,x,y,dir=0,walking=false){
   const step=walking?Math.sin(time*15)*2:0,sleepBob=p.sleeping?Math.round((Math.sin(time*3)+1)*.5):0;y+=sleepBob;
   rect(x-5,y+7,4,5+step,'#303e39');rect(x+1,y+7,4,5-step,'#303e39');
@@ -132,12 +148,14 @@ function person(p,x,y,dir=0,walking=false){
   const art=characterArt(p);
   ctx.save();ctx.translate(Math.round(x+(p.sleeping?1:0)),Math.round(y-6));if(p.sleeping)ctx.rotate(.09);
   if(art){
-    ctx.imageSmoothingEnabled=characterStyle!=='pixel';if(characterStyle!=='pixel')ctx.imageSmoothingQuality='high';ctx.drawImage(art,-9,-11,18,21);if(p.sleeping)drawSleepingEyes();
+    ctx.imageSmoothingEnabled=characterStyle!=='pixel';if(characterStyle!=='pixel')ctx.imageSmoothingQuality='high';ctx.drawImage(art,-9,-11,18,21);
   }else drawPixelHead(p,0,0,p.sleeping);
   ctx.restore();
+  if(p.carriedItem)paintItem(ctx,p.carriedItem,x+12,y+3,.7);
 }
 function familyStatus(p,i){
   if(p.room==='outside')return mode==='outside'&&i===selected?'Spaceruje po mieście':'Na zewnątrz';
+  if(p.room==='shop')return'W sklepie';
   if(p.room==='school')return p.teacher?'Nauczyciel przy stoliku':p.seated&&Number.isInteger(p.schoolSeat)?'Siedzi przy '+schoolSeats[p.schoolSeat].label:'W szkolnej przyczepce';
   if(p.driving)return'Prowadzi samochód';
   if(p.passenger)return'Pasażer · obsługuje radio';
@@ -217,13 +235,20 @@ function hugFamily(p,other){
 function streetPeopleByDistance(){return family.filter(p=>!p.aboard&&p.pickup).map(p=>({p,distance:Math.hypot(car.x-p.pickup.x,car.y-p.pickup.y)})).sort((a,b)=>a.distance-b.distance)}
 function nearestWaitingFamily(){return streetPeopleByDistance().find(({p})=>p.boardable!==false)}
 function waitingFamilyNearCar(){const nearest=streetPeopleByDistance()[0];return nearest&&nearest.distance<82?nearest.p:null}
+function shopDoorNearPerson(p){
+  if(!p?.pickup)return null;const cellX=Math.round((p.pickup.x-130)/350),cellY=Math.round((p.pickup.y-215)/350);
+  const a=((cellX%6)+6)%6,b=((cellY%6)+6)%6;if(a+b*6!==7)return null;
+  const door={x:cellX*350+130,y:cellY*350+215};return Math.hypot(p.pickup.x-door.x,p.pickup.y-door.y)<38?door:null;
+}
+function atShopDoor(p){return p.x>shopDoorZone.left&&p.x<shopDoorZone.right&&p.y>shopDoorZone.top&&p.y<shopDoorZone.bottom}
+function atShopCounter(p){return p.x>shopCounterZone.left&&p.x<shopCounterZone.right&&p.y>shopCounterZone.top&&p.y<shopCounterZone.bottom}
 function standingSpotForSeat(index){
   const seat=cabinSeats[index]||cabinSeats[0];
   const candidates=index>=3?[{x:16,y:Math.min(78,seat.y)},{x:14,y:46},{x:0,y:82}]:[{x:seat.x<0?-17:17,y:Math.min(84,seat.y+13)},{x:0,y:38}];
   return candidates.find(point=>canWalk(point.x,point.y))||{x:0,y:38};
 }
 function interactionUnavailable(){
-  const p=family[selected];if(mode==='driving'||mode==='outside'||p.passenger||p.seated)return false;
+  const p=family[selected];if(mode==='driving'||mode==='outside'||mode==='shop'||p.passenger||p.seated)return false;
   if(mode==='school'){
     const seat=nearestSchoolSeat(p);return !!(seat&&schoolSeatOccupant(seat.index,p)&&!touchingFamilyMember(p));
   }
@@ -234,7 +259,8 @@ function interactionUnavailable(){
 function interactionLabel(){
   const p=family[selected];
   if(mode==='driving'){const waiting=waitingFamilyNearCar();return waiting?'Zabierz '+(waiting.pickupName||waiting.name):'Wróć do wnętrza'}
-  if(mode==='outside'){const nearby=outsidePersonNearby(p);return nearby?'Porozmawiaj z '+nearby.name:outsidePersonNearCar(p)?'Wejdź do samochodu':'Podejdź do samochodu'}
+  if(mode==='outside'){const door=shopDoorNearPerson(p),nearby=outsidePersonNearby(p);return door?'Wejdź do sklepu':nearby?'Porozmawiaj z '+nearby.name:outsidePersonNearCar(p)?'Wejdź do samochodu':'Podejdź do samochodu'}
+  if(mode==='shop')return atShopDoor(p)?'Wyjdź ze sklepu':atShopCounter(p)?'Przejrzyj towary':'Podejdź do lady';
   if(p.driving)return'Wstań zza kierownicy';
   if(p.passenger)return'Wstań z fotela';if(p.seated)return'Wstań';
   if(mode==='school'){
@@ -250,7 +276,7 @@ function interactionLabel(){
   const close=touchingFamilyMember(p);if(close)return close.sleeping?'Obudź':'Przytul';
   return target?'Miejsce zajęte':'Interakcja';
 }
-function selectPerson(i){if(!family[i]?.joined)return;window.resetTouchControls?.();selected=i;mode=family[i].room==='outside'?'outside':family[i].room==='school'?'school':family[i].driving?'driving':'interior';buildFamily();toast(family[i].name+(mode==='outside'?touchHint(' · Joystick — spacer po mieście',' · WASD — spacer po mieście'):mode==='driving'?touchHint(' prowadzi · osobne pedały · kierownica ← →',' prowadzi · W/S — gaz i hamulec · A/D — skręt'):touchHint(' · Dotknij „Wstań”, potem użyj joysticka.',' · E — interakcja, WASD — spacer')))}
+function selectPerson(i){if(!family[i]?.joined)return;window.resetTouchControls?.();selected=i;mode=family[i].room==='outside'?'outside':family[i].room==='school'?'school':family[i].room==='shop'?'shop':family[i].driving?'driving':'interior';buildFamily();toast(family[i].name+(mode==='outside'?touchHint(' · Joystick — spacer po mieście',' · WASD — spacer po mieście'):mode==='shop'?' · jest w sklepie':mode==='driving'?touchHint(' prowadzi · osobne pedały · kierownica ← →',' prowadzi · W/S — gaz i hamulec · A/D — skręt'):touchHint(' · Dotknij „Wstań”, potem użyj joysticka.',' · E — interakcja, WASD — spacer')))}
 function familyMemberAtCabinPoint(x,y){
   return family.map((p,i)=>({p,i,distance:Math.hypot(x-p.x,y-(p.y-3))}))
     .filter(({p})=>p.aboard&&p.room==='car'&&Math.abs(x-p.x)<=12&&y>=p.y-21&&y<=p.y+15)
@@ -306,9 +332,15 @@ function interact(){
   if(!keepDrivingControls)window.resetTouchControls?.();
   const p=family[selected];
   if(mode==='outside'){
+    const shopDoor=shopDoorNearPerson(p);if(shopDoor){p.shopExit=shopDoor;p.room='shop';p.pickup=null;p.x=0;p.y=64;mode='shop';buildFamily();toast('Wchodzisz do sklepu. Podejdź do lady, żeby zrobić zakupy.');return}
     const nearby=outsidePersonNearby(p);if(nearby){startStreetDialogue(p,nearby);return}
     if(!outsidePersonNearCar(p)){toast('Podejdź bliżej zaparkowanego samochodu.');return}
     p.aboard=true;p.joined=true;p.room='car';p.seated=false;p.passenger=false;p.station=null;p.pickup=null;p.x=46;p.y=-40;mode='interior';buildFamily();toast(p.name+' wraca do samochodu. Auto pozostaje zaparkowane.');return
+  }
+  if(mode==='shop'){
+    if(atShopDoor(p)){const exit=p.shopExit||{x:480,y:565};p.room='outside';p.pickup={x:exit.x,y:exit.y+8};p.x=0;p.y=0;mode='outside';buildFamily();toast('Wychodzisz ze sklepu na miasto.');return}
+    if(atShopCounter(p)){openShop();return}
+    toast('Podejdź do lady z towarem albo do drzwi.');return
   }
   if(mode==='driving'){
     const waiting=waitingFamilyNearCar();
@@ -467,6 +499,19 @@ function schoolRoom(){
   ctx.restore();
 }
 function canWalkSchool(x,y){if(x<-54||x>54||y<-85||y>84)return false;const obstacles=[[-51,-50,-17,-24],[12,-72,57,-26],...schoolSeats.map(seat=>[seat.x-15,seat.y-12,seat.x+15,seat.y+12])];return !obstacles.some(([a,b,c,d])=>x>a-3&&x<c+3&&y>b-3&&y<d+3)}
+function shopRoom(){
+  ctx.save();ctx.translate(320,210);ctx.scale(2.15,2.15);
+  rect(-68,-100,136,200,'#263b32');rect(-64,-96,128,192,'#d2c397');rect(-59,-91,118,182,'#b99b68');
+  for(let y=-87;y<88;y+=12)rect(-57,y,114,1,'#d2b984');
+  rect(-49,-66,98,24,'#684a34');rect(-46,-63,92,6,'#c09259');rect(-44,-55,88,10,'#8c6844');
+  const positions=[-33,-11,11,33];shopCatalog.forEach((item,index)=>{paintItem(ctx,item.id,positions[index],-70,.8);ctx.fillStyle='#fff0a6';ctx.font='bold 5px monospace';ctx.textAlign='center';ctx.fillText(item.price+'$',positions[index],-58)});ctx.textAlign='start';
+  rect(-57,-25,18,66,'#76533b');rect(-54,-21,12,5,'#d9bd7d');rect(-54,1,12,5,'#d9bd7d');rect(-54,23,12,5,'#d9bd7d');
+  rect(39,-25,18,66,'#76533b');rect(42,-21,12,5,'#d9bd7d');rect(42,1,12,5,'#d9bd7d');rect(42,23,12,5,'#d9bd7d');
+  rect(-16,72,32,24,'#756b56');rect(-14,74,28,22,'#52706a');rect(8,84,2,2,'#eee0b8');rect(-16,69,32,3,'#4f6151');
+  const p=family[selected];family.filter(member=>member.room==='shop').forEach(member=>person(member,member.x,member.y,0,member===p&&down('w','a','s','d','arrowup','arrowdown','arrowleft','arrowright')));if(p.room==='shop')rect(p.x-9,p.y-23,18,2,'#d8ee9b');
+  if(atShopDoor(p)||atShopCounter(p)){const prompt=atShopDoor(p)?{x:0,y:69}:{x:0,y:-72};rect(prompt.x-7,prompt.y-5,14,10,'#243b2f');ctx.fillStyle='#e3f0b1';ctx.font='9px monospace';ctx.fillText('E',prompt.x-3,prompt.y+3)}ctx.restore();
+}
+function canWalkShop(x,y){if(x<-54||x>54||y<-85||y>85)return false;const obstacles=[[-51,-68,51,-39],[-58,-28,-36,44],[36,-28,58,44]];return !obstacles.some(([a,b,c,d])=>x>a-4&&x<c+4&&y>b-6&&y<d+6)}
 function canWalk(x,y){if(x<-48||x>48||y<-54||y>89)return false;const obstacles=[[-56,-21,-23,10],[23,-21,56,10],[-56,35,-23,65],[27,52,56,90]];return !obstacles.some(([a,b,c,d])=>x>a-5&&x<c+5&&y>b-8&&y<d+8)}
 function seatedFamilyInDrawOrder(){return family.filter(p=>p.aboard&&p.room==='car'&&p.seated).sort((a,b)=>a.y-b.y)}
 function activeWorkers(){return family.filter(p=>p.aboard&&p.seated&&!p.sleeping&&!p.passenger&&Number.isInteger(p.station)&&p.station<workstations.length)}
@@ -532,7 +577,7 @@ function update(dt){
   }else if(mode!=='driving'){
     const driver=family.find(member=>member.driving);
     if(driver&&!car.parked){const speed=23,nx=car.x+Math.sin(car.angle)*speed*dt,ny=car.y-Math.cos(car.angle)*speed*dt;if(!worldObstacleAt(nx,ny)){car.x=nx;car.y=ny;car.speed=32}else car.speed=0}else car.speed=0;
-    if(!p.seated){let dx=(down('d','arrowright')?1:0)-(down('a','arrowleft')?1:0),dy=(down('s','arrowdown')?1:0)-(down('w','arrowup')?1:0);const l=Math.hypot(dx,dy)||1;dx=dx/l*47*dt;dy=dy/l*47*dt;const walk=mode==='school'?canWalkSchool:canWalk;if(walk(p.x+dx,p.y))p.x+=dx;if(walk(p.x,p.y+dy))p.y+=dy}
+    if(!p.seated){let dx=(down('d','arrowright')?1:0)-(down('a','arrowleft')?1:0),dy=(down('s','arrowdown')?1:0)-(down('w','arrowup')?1:0);const l=Math.hypot(dx,dy)||1;dx=dx/l*47*dt;dy=dy/l*47*dt;const walk=mode==='school'?canWalkSchool:mode==='shop'?canWalkShop:canWalk;if(walk(p.x+dx,p.y))p.x+=dx;if(walk(p.x,p.y+dy))p.y+=dy}
   }else{
     const gas=down('w','arrowup'),brake=down('s','arrowdown',' ');car.speed+=(brake?-85:gas?48:-10)*dt;car.speed=Math.max(-22,Math.min(100,car.speed));if(Math.abs(car.speed)<.5)car.speed=0;
     car.angle+=((down('d','arrowright')?1:0)-(down('a','arrowleft')?1:0))*dt*1.9*(car.speed/70);
@@ -541,23 +586,23 @@ function update(dt){
     if(obstacle){car.speed=-car.speed*.22;if(collisionCooldown<=0){collisionCount++;collisionCooldown=1;checkProgressAchievements()}toast(obstacle==='tree'?'Uwaga na drzewo!':obstacle==='vehicle'?'Uwaga na inne auto!':'Ostrożnie! Budynki nie ustąpią pierwszeństwa.')}else{car.x=nx;car.y=ny}
   }
   distance+=Math.abs(car.speed)*dt/3600;const targetZoom=mode==='interior'?1.77:mode==='outside'?1.45:.88;zoom+=(targetZoom-zoom)*Math.min(1,dt*3);roof+=((mode==='driving'||mode==='outside'?1:0)-roof)*Math.min(1,dt*4);
-  $('speed').textContent=Math.round(Math.abs(car.speed));$('distance').textContent=distance.toFixed(1);$('view-label').textContent=mode==='interior'?'WNĘTRZE SAMOCHODU':mode==='school'?'PRZYCZEPKA · SZKOŁA':mode==='outside'?'MIASTO · PIESZO':'MIASTO · ZA KIEROWNICĄ';
+  $('speed').textContent=Math.round(Math.abs(car.speed));$('distance').textContent=distance.toFixed(1);$('view-label').textContent=mode==='interior'?'WNĘTRZE SAMOCHODU':mode==='school'?'PRZYCZEPKA · SZKOŁA':mode==='shop'?'SKLEP · WNĘTRZE':mode==='outside'?'MIASTO · PIESZO':'MIASTO · ZA KIEROWNICĄ';
   const currentDriver=family.find(member=>member.driving);$('driver-name').textContent=currentDriver?.name||'Brak kierowcy';$('driver-status').textContent=mode==='driving'?'Za kierownicą · sterujesz':currentDriver?'Za kierownicą · prowadzi':'Samochód stoi';
   const waitingNearby=mode==='driving'?waitingFamilyNearCar():null;
-  $('status').textContent=mode==='outside'?p.name+' spaceruje po mieście. Samochód czeka na parkingu.':waitingNearby?(waitingNearby.boardable===false?waitingNearby.name+' jest przy drodze.':waitingNearby.name+' czeka przy drodze — zatrzymaj się i zabierz ją.'):mode==='driving'?p.name+' prowadzi. Szukaj osób przy drodze.':mode==='school'?(p.teacher?p.name+' prowadzi lekcję.':p.seated?p.name+' siedzi przy ławce.':p.name+' jest w szkolnej przyczepce.'):p.passenger?p.name+' przy radiu. Kierowca prowadzi.':p.seated?(p.sleeping?p.name+' zasnął przy komputerze.':'Kierowca prowadzi. Rodzina pracuje.'):p.name+' spaceruje. Kierowca prowadzi.';
+  $('status').textContent=mode==='outside'?p.name+' spaceruje po mieście. Samochód czeka na parkingu.':mode==='shop'?p.name+' robi zakupy w sklepie.':waitingNearby?(waitingNearby.boardable===false?waitingNearby.name+' jest przy drodze.':waitingNearby.name+' czeka przy drodze — zatrzymaj się i zabierz ją.'):mode==='driving'?p.name+' prowadzi. Szukaj osób przy drodze.':mode==='school'?(p.teacher?p.name+' prowadzi lekcję.':p.seated?p.name+' siedzi przy ławce.':p.name+' jest w szkolnej przyczepce.'):p.passenger?p.name+' przy radiu. Kierowca prowadzi.':p.seated?(p.sleeping?p.name+' zasnął przy komputerze.':'Kierowca prowadzi. Rodzina pracuje.'):p.name+' spaceruje. Kierowca prowadzi.';
   $('move-label').textContent=mode==='driving'?'Gaz / hamulec / skręt':'Poruszanie';$('control-mode').textContent=mode==='driving'?'Nowa perspektywa. Ten sam dom.':mode==='school'?'Mobilna klasa jest gotowa do lekcji.':'W środku jest całkiem przytulnie.';
   $('step-one').classList.toggle('done',walked);$('step-two').classList.toggle('done',p.y<-42||taken);$('step-three').classList.toggle('done',family.filter(member=>member.boardable!==false).every(member=>member.aboard));
-  if(toastTimer<=0){const target=mode==='interior'?nearestWorkstation(p):null,schoolTarget=mode==='school'?nearestSchoolSeat(p):null,outsideFriend=mode==='outside'?outsidePersonNearby(p):null;$('toast').textContent=mode==='outside'?(outsideFriend?'E  porozmawiaj z '+outsideFriend.name:outsidePersonNearCar(p)?'E  wejdź do samochodu':'WASD  spaceruj · podążaj za wskaźnikiem auta'):waitingNearby?'E  zabierz '+(waitingNearby.pickupName||waitingNearby.name):mode==='driving'?'W / S  gaz i hamulec     A / D  skręt     E  wróć do wnętrza':mode==='school'?(p.seated?'E  wstań':atSchoolDoor(p)?'E  wróć do samochodu':atSchoolBoard(p)?'E  użyj tablicy':atTeacherPlace(p)?'E  zostań nauczycielem':schoolTarget?'E  usiądź przy ławce':'WASD  spaceruj po klasie'):p.seated?'E  wstań od miejsca     1–6  wybierz osobę':atExitDoor(p)?'E  wejdź do szkoły':atSideExit(p)?'E  wyjdź z samochodu':atDriverPlace(p)?'E  przejmij kierownicę':target?(workstationOccupant(target.index,p)?'To miejsce jest zajęte':'E  usiądź przy wolnym miejscu'):'WASD  spaceruj     Podejdź do kierowcy z przodu ↑'}
+  if(toastTimer<=0){const target=mode==='interior'?nearestWorkstation(p):null,schoolTarget=mode==='school'?nearestSchoolSeat(p):null,outsideFriend=mode==='outside'?outsidePersonNearby(p):null;$('toast').textContent=mode==='outside'?(shopDoorNearPerson(p)?'E  wejdź do sklepu':outsideFriend?'E  porozmawiaj z '+outsideFriend.name:outsidePersonNearCar(p)?'E  wejdź do samochodu':'WASD  spaceruj · podążaj za wskaźnikiem auta'):mode==='shop'?(atShopDoor(p)?'E  wyjdź ze sklepu':atShopCounter(p)?'E  przejrzyj towary':'WASD  podejdź do lady z towarem'):waitingNearby?'E  zabierz '+(waitingNearby.pickupName||waitingNearby.name):mode==='driving'?'W / S  gaz i hamulec     A / D  skręt     E  wróć do wnętrza':mode==='school'?(p.seated?'E  wstań':atSchoolDoor(p)?'E  wróć do samochodu':atSchoolBoard(p)?'E  użyj tablicy':atTeacherPlace(p)?'E  zostań nauczycielem':schoolTarget?'E  usiądź przy ławce':'WASD  spaceruj po klasie'):p.seated?'E  wstań od miejsca     1–6  wybierz osobę':atExitDoor(p)?'E  wejdź do szkoły':atSideExit(p)?'E  wyjdź z samochodu':atDriverPlace(p)?'E  przejmij kierownicę':target?(workstationOccupant(target.index,p)?'To miejsce jest zajęte':'E  usiądź przy wolnym miejscu'):'WASD  spaceruj     Podejdź do kierowcy z przodu ↑'}
   if(toastTimer<=0&&touchHint(true,false))$('toast').textContent=mode==='driving'?'Joystick: ↑ gaz · ↓ hamulec · ← → skręt':p.seated?'Dotknij „Wstań”. Osobę wybierzesz na jej karcie.':atDriverPlace(p)?'Dotknij „Przejmij kierownicę”.':'Joystick: spacer · Podejdź do kierowcy z przodu ↑';
   if(toastTimer<=0&&atPassengerSeat())$('toast').textContent=touchHint('Steruj radiem przyciskami na ekranie.','R — radio wł. / wył. · [ / ] — utwór · E — wstań');
   else if(toastTimer<=0&&mode==='interior'&&!p.seated&&atPassengerPlace(p))$('toast').textContent=touchHint('Dotknij „Usiądź przy radiu”.','E — usiądź na fotelu pasażera i obsługuj radio');
   if(toastTimer<=0&&touchHint(true,false))$('toast').textContent='';
 }
-function draw(){ctx.clearRect(0,0,640,420);if(mode==='school')schoolRoom();else if(mode==='outside'){const p=family[selected];ctx.save();ctx.translate(320,210);ctx.scale(zoom,zoom);ctx.translate(-p.pickup.x,-p.pickup.y);world();interior(true);ctx.restore()}else{ctx.save();ctx.translate(320,210);ctx.scale(zoom,zoom);if(mode==='interior')ctx.rotate(-car.angle);ctx.translate(-car.x,-car.y);world();interior();ctx.restore()}
+function draw(){ctx.clearRect(0,0,640,420);if(mode==='school')schoolRoom();else if(mode==='shop')shopRoom();else if(mode==='outside'){const p=family[selected];ctx.save();ctx.translate(320,210);ctx.scale(zoom,zoom);ctx.translate(-p.pickup.x,-p.pickup.y);world();interior(true);ctx.restore()}else{ctx.save();ctx.translate(320,210);ctx.scale(zoom,zoom);if(mode==='interior')ctx.rotate(-car.angle);ctx.translate(-car.x,-car.y);world();interior();ctx.restore()}
   if(weather==='rain'&&(mode==='driving'||mode==='outside'))drawRain();
   // Pixel corner markers and quiet scene caption.
   rect(13,13,19,2,'#d8e1b7');rect(13,13,2,19,'#d8e1b7');rect(608,13,19,2,'#d8e1b7');rect(625,13,2,19,'#d8e1b7');
-  ctx.fillStyle='#edf0cf';ctx.font='9px monospace';ctx.fillText(mode==='driving'?'RODZINNA PODRÓŻ / WIDOK MIASTA':mode==='outside'?'SPACER PO MIEŚCIE / '+family[selected].name.toUpperCase():mode==='school'?'MOBILNA SZKOŁA / '+family[selected].name.toUpperCase():'MOBILNY DOM / '+family[selected].name.toUpperCase(),24,36);
+  ctx.fillStyle='#edf0cf';ctx.font='9px monospace';ctx.fillText(mode==='driving'?'RODZINNA PODRÓŻ / WIDOK MIASTA':mode==='outside'?'SPACER PO MIEŚCIE / '+family[selected].name.toUpperCase():mode==='school'?'MOBILNA SZKOŁA / '+family[selected].name.toUpperCase():mode==='shop'?'SKLEP OSIEDLOWY / '+family[selected].name.toUpperCase():'MOBILNY DOM / '+family[selected].name.toUpperCase(),24,36);
   drawPickupIndicator();
   drawCarIndicator();
 }
@@ -611,12 +656,34 @@ window.setCharacterStyle=setCharacterStyle;
 window.addServerCharacter=function(record){
   if(!record?.id||family.some(member=>member.serverId===record.id))return false;
   const inSchool=mode==='school',inCity=mode==='driving'||mode==='outside';
-  const member={serverId:record.id,name:record.name,pickupName:record.name,role:'Nowa postać',color:record.color,hair:'#49382f',hairStyle:'short',x:0,y:inSchool?-42:38,station:null,seated:false,aboard:!inCity,joined:true,closeness:0,room:inSchool?'school':inCity?'outside':'car',schoolSeat:null,teacher:false,sleeping:false,speech:null,driving:false,passenger:false};
+  const member={serverId:record.id,name:record.name,pickupName:record.name,role:'Nowa postać',color:record.color,hair:'#49382f',hairStyle:'short',x:0,y:inSchool?-42:38,station:null,seated:false,aboard:!inCity,joined:true,closeness:0,room:inSchool?'school':inCity?'outside':'car',schoolSeat:null,teacher:false,sleeping:false,speech:null,driving:false,passenger:false,carriedItem:null};
   if(inCity)member.pickup={x:car.x+70*Math.cos(car.angle),y:car.y+70*Math.sin(car.angle)};
   family.push(member);familyPhotos.push({label:record.name,src:record.portraitUrl,pixel:record.portraitUrl,crop:[0,0,1,1],pixelCrop:[0,0,1,1]});
   const portrait=new Image();portrait.onload=()=>{const face=document.createElement('canvas');face.width=192;face.height=224;const faceContext=face.getContext('2d');faceContext.beginPath();faceContext.ellipse(96,112,96,112,0,0,Math.PI*2);faceContext.clip();faceContext.drawImage(portrait,0,0,192,224);member.face=face;member.pixel=face;buildFamily()};portrait.src=record.portraitUrl;
   buildFamily();toast(record.name+(inCity?' czeka obok samochodu.':inSchool?' pojawia się w szkolnej przyczepce.':' dołącza do wnętrza samochodu.'));return true;
 };
+const shopModal=$('shop-modal'),shopClose=$('shop-close'),inventoryModal=$('inventory-modal'),inventoryToggle=$('inventory-toggle'),inventoryClose=$('inventory-close');let commerceWasPaused=false;
+function itemInUseCount(id,except=null){return family.filter(member=>member!==except&&member.carriedItem===id).length}
+function renderCommerceIcons(rootId){document.querySelectorAll('#'+rootId+' canvas[data-item]').forEach(icon=>paintItem(icon.getContext('2d'),icon.dataset.item,24,24,1.7))}
+function buildShop(){
+  $('shop-money').textContent=Math.floor(money).toLocaleString('pl-PL');
+  $('shop-list').innerHTML=shopCatalog.map(item=>`<article class="commerce-item"><canvas width="48" height="48" data-item="${item.id}" aria-hidden="true"></canvas><div><strong>${item.name}</strong><small>${item.description}</small><em>Masz: ${inventory[item.id]}</em></div><button type="button" data-buy="${item.id}" ${money<item.price?'disabled':''}>${item.price} monet</button></article>`).join('');
+  renderCommerceIcons('shop-list');document.querySelectorAll('[data-buy]').forEach(button=>button.onclick=()=>buyItem(button.dataset.buy));
+}
+function buyItem(id){const item=shopCatalog.find(candidate=>candidate.id===id);if(!item)return false;if(money<item.price){toast('Brakuje monet na: '+item.name+'.');buildShop();return false}money-=item.price;inventory[id]++;lastMoneyShown=-1;buildShop();buildInventory();toast('Kupiono: '+item.name+'. Przedmiot trafił do wspólnego ekwipunku.');return true}
+function buildInventory(){
+  const p=family[selected];$('inventory-person').textContent=p.name;
+  $('inventory-list').innerHTML=shopCatalog.map(item=>{const available=inventory[item.id]-itemInUseCount(item.id,p),equipped=p.carriedItem===item.id;return`<article class="commerce-item ${equipped?'equipped':''}"><canvas width="48" height="48" data-item="${item.id}" aria-hidden="true"></canvas><div><strong>${item.name}</strong><small>${equipped?'Niesie ten przedmiot':'Dostępne: '+Math.max(0,available)+' z '+inventory[item.id]}</small></div><button type="button" data-equip="${item.id}" ${!equipped&&available<1?'disabled':''}>${equipped?'Wybrano':'Wybierz'}</button></article>`}).join('');
+  renderCommerceIcons('inventory-list');document.querySelectorAll('[data-equip]').forEach(button=>button.onclick=()=>equipItem(button.dataset.equip));$('inventory-clear').disabled=!p.carriedItem;
+}
+function equipItem(id){const p=family[selected];if(!inventory[id]||inventory[id]<=itemInUseCount(id,p)){toast('Ten przedmiot jest już używany przez inną osobę.');buildInventory();return false}p.carriedItem=id;buildInventory();buildFamily();toast(p.name+' wybiera: '+shopCatalog.find(item=>item.id===id).name+'.');return true}
+function clearEquippedItem(){const p=family[selected];if(!p.carriedItem)return;p.carriedItem=null;buildInventory();buildFamily();toast(p.name+' odkłada przedmiot do wspólnego ekwipunku.')}
+function openCommerce(modal,builder,focus){commerceWasPaused=paused;if(!paused)togglePause();builder();modal.hidden=false;focus.focus?.()}
+function closeCommerce(modal){modal.hidden=true;if(!commerceWasPaused&&paused)togglePause();canvas.focus?.()}
+function openShop(){openCommerce(shopModal,buildShop,shopClose)}
+function openInventory(){openCommerce(inventoryModal,buildInventory,inventoryClose)}
+shopClose.onclick=()=>closeCommerce(shopModal);inventoryClose.onclick=()=>closeCommerce(inventoryModal);inventoryToggle.onclick=openInventory;$('inventory-clear').onclick=clearEquippedItem;
+shopModal.addEventListener('click',event=>{if(event.target===shopModal)closeCommerce(shopModal)});inventoryModal.addEventListener('click',event=>{if(event.target===inventoryModal)closeCommerce(inventoryModal)});
 const settingsModal=$('settings-modal'),settingsToggle=$('settings-toggle'),settingsClose=$('settings-close');let settingsWasPaused=false;
 function openSettings(){settingsWasPaused=paused;if(!paused)togglePause();settingsModal.hidden=false;document.querySelector(`input[name="character-style"][value="${characterStyle}"]`)?.focus()}
 function closeSettings(){settingsModal.hidden=true;if(!settingsWasPaused&&paused)togglePause();canvas.focus?.()}
@@ -628,6 +695,6 @@ function closeAchievements(){achievementsModal.hidden=true;if(!achievementsWasPa
 achievementsToggle.onclick=openAchievements;achievementsClose.onclick=closeAchievements;
 achievementsModal.addEventListener('click',event=>{if(event.target===achievementsModal)closeAchievements()});
 document.querySelectorAll('input[name="character-style"]').forEach(input=>input.addEventListener('change',()=>{if(input.checked)setCharacterStyle(input.value)}));
-window.addEventListener('keydown',event=>{if(event.key!=='Escape')return;if(!boardEditor.hidden){event.preventDefault();closeBoardEditor();return}if(!achievementsModal.hidden){event.preventDefault();closeAchievements();return}if(!settingsModal.hidden){event.preventDefault();closeSettings()}});
+window.addEventListener('keydown',event=>{if(event.key!=='Escape')return;if(!shopModal.hidden){event.preventDefault();closeCommerce(shopModal);return}if(!inventoryModal.hidden){event.preventDefault();closeCommerce(inventoryModal);return}if(!boardEditor.hidden){event.preventDefault();closeBoardEditor();return}if(!achievementsModal.hidden){event.preventDefault();closeAchievements();return}if(!settingsModal.hidden){event.preventDefault();closeSettings()}});
 let last=performance.now();function frame(now){const dt=Math.min((now-last)/1000,.04);last=now;update(dt);gameAudio.update(dt,{mode,speed:car.speed,paused,raining:weather==='rain',seats:family.filter(p=>p.aboard).map(p=>p.seated&&!p.sleeping&&!p.passenger&&Number.isInteger(p.station)&&p.station<workstations.length)});draw();requestAnimationFrame(frame)}
 $('achievement-value').textContent='0/'+Object.keys(achievementDefinitions).length;setCharacterStyle(characterStyle);loadFamilyPhotos();requestAnimationFrame(frame);

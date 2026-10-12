@@ -1,0 +1,16 @@
+'use strict';
+const list=document.getElementById('characters'),statusLine=document.getElementById('status'),csrf=document.querySelector('meta[name="editor-csrf"]').content;
+let characters=[],pendingDelete=null;
+const escapeHtml=value=>String(value).replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+function setStatus(message,error=false){statusLine.textContent=message;statusLine.classList.toggle('error',error)}
+function render(){
+  if(!characters.length){list.innerHTML='<p class="empty">Nie ma jeszcze żadnych postaci utworzonych w kreatorze gry.</p>';return}
+  list.innerHTML=characters.map(character=>`<article class="character-card" data-id="${character.id}"><div class="character-picture" style="--shirt:${character.color}"><img src="${escapeHtml(character.portraitUrl)}" alt="Portret: ${escapeHtml(character.name)}"><span></span></div><form><label>Imię<input name="name" maxlength="12" required value="${escapeHtml(character.name)}"></label><label>Kolor ubrania<input name="color" type="color" value="${character.color}"></label><div class="actions"><button type="submit">Zapisz zmiany</button><button class="delete" type="button">Usuń</button></div></form></article>`).join('');
+  list.querySelectorAll('.character-card').forEach(card=>{card.querySelector('form').onsubmit=event=>saveCharacter(event,card);card.querySelector('.delete').onclick=()=>askDelete(card.dataset.id)});
+}
+async function request(method,body){const response=await fetch('api/characters-admin.php',{method,headers:{'Content-Type':'application/json','X-Editor-CSRF':csrf},body:JSON.stringify(body)}),payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||'Błąd serwera.');return payload}
+async function loadCharacters(){setStatus('Wczytywanie…');try{const response=await fetch('api/characters.php',{cache:'no-store'});if(!response.ok)throw new Error('Nie udało się pobrać listy.');characters=(await response.json()).characters||[];render();setStatus('')}catch(error){setStatus(error.message,true)}}
+async function saveCharacter(event,card){event.preventDefault();const button=card.querySelector('[type="submit"]'),data=new FormData(event.currentTarget);button.disabled=true;setStatus('Zapisywanie zmian…');try{const payload=await request('PUT',{id:card.dataset.id,name:data.get('name').trim(),color:data.get('color')});characters=characters.map(character=>character.id===payload.character.id?payload.character:character);render();setStatus('Zmiany zostały zapisane.')}catch(error){setStatus(error.message,true)}finally{button.disabled=false}}
+function askDelete(id){const character=characters.find(item=>item.id===id);pendingDelete=id;document.getElementById('delete-question').textContent='Postać „'+character.name+'” oraz jej zdjęcia zostaną usunięte z serwera.';document.getElementById('delete-dialog').showModal()}
+document.getElementById('delete-dialog').addEventListener('close',async event=>{if(event.target.returnValue!=='confirm'||!pendingDelete)return;const id=pendingDelete;pendingDelete=null;setStatus('Usuwanie postaci…');try{await request('DELETE',{id});characters=characters.filter(character=>character.id!==id);render();setStatus('Postać została usunięta.')}catch(error){setStatus(error.message,true)}});
+document.getElementById('reload').onclick=loadCharacters;loadCharacters();

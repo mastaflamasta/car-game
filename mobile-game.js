@@ -11,8 +11,10 @@
   toolbar.className = 'mobile-game-toolbar';
   toolbar.setAttribute('aria-label', 'Ustawienia gry');
   const scores = document.getElementById('score-counters');
+  const inventory = document.getElementById('inventory-toggle');
   const settings = document.getElementById('settings-toggle');
   if (scores) toolbar.append(scores);
+  if (inventory) toolbar.append(inventory);
   if (settings) toolbar.append(settings);
   if (document.documentElement.requestFullscreen) {
     const fullscreen = document.createElement('button');

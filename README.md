@@ -19,6 +19,8 @@ W **Ustawieniach** znajduje się pula postaci przechowywana na serwerze. Kreator
 
 Dane runtime znajdują się w `data/` (katalog musi być zapisywalny dla procesu PHP). Endpointy to `GET/POST api/characters.php` oraz `GET/PUT api/board.php`. Kreator przyjmuje JPG, PNG lub WebP i przed wysłaniem optymalizuje duże fotografie do limitu 2 MB zgodnego z typową konfiguracją PHP.
 
+Oddzielny panel zarządzania postaciami znajduje się pod adresem `editor.php`. Hasło początkowe to `edytor4321`. Po zalogowaniu można zmienić imię i kolor ubrania albo usunąć postać wraz z zapisanymi zdjęciami. Operacje zapisu i usuwania są chronione sesją PHP oraz tokenem CSRF.
+
 Radio znajduje się na desce rozdzielczej przy przednim prawym fotelu pasażera. Wstań od stanowiska, podejdź do tego fotela i użyj **E** lub **Usiądź przy radiu**. Z fotela obsługujesz przyciski radia pod grą: poprzedni/następny utwór oraz włącznik. Na klawiaturze działa też **R** (włącz/wyłącz) i **[ / ]** (utwór). **E / Wstań z fotela** pozwala wrócić do spacerowania. Fotel zajmuje jedna osoba naraz; aby obsługiwać radio, wybierz siedzącego na nim pasażera.
 
 Sześć własnych instrumentalnych utworów jest generowanych lokalnie przez Web Audio i zapętlanych. Ostatnią, siódmą pozycją jest „Liberian Girl”, odtwarzana w pętli z pliku `music/liberian-girl.ogg`. Jej odnalezienie odblokowuje specjalny achievement. Radio początkowo jest wyłączone. Muzyka gra dalej po odejściu pasażera i podczas jazdy; pauza, ukrycie karty i wyciszenie dźwięku zatrzymują odtwarzanie. Suwak głośności w nagłówku obejmuje również muzykę z pliku.

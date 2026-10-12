@@ -10,7 +10,8 @@
   .mobile-game-toolbar .sound, .mobile-game-fullscreen, .mobile-toolbar-pause { min-width:44px; min-height:38px; padding:7px 10px; color:#edf1db; font:12px 'DM Sans',sans-serif; background:rgba(28,40,31,.9); border:1px solid #617356; border-radius:7px; }
   .mobile-game-toolbar #audio-toggle { font-size:0; }
   .mobile-game-toolbar #audio-toggle::before { content:'♪'; font-size:18px; }
-  .mobile-game-toolbar #settings-toggle span { display:none; }
+  .mobile-game-toolbar #settings-toggle span, .mobile-game-toolbar #inventory-toggle span { display:none; }
+  .mobile-game-toolbar #inventory-toggle { display:inline-flex; align-items:center; justify-content:center; font-size:18px; }
   .mobile-game-toolbar .volume-control { flex:1; justify-content:center; }
   .mobile-game-toolbar .volume-control input { width:min(22vw,90px); }
   .mobile-game-stage { position:relative!important; min-width:0; min-height:0; overflow:hidden; background:#526550; aspect-ratio:auto!important; }
@@ -30,6 +31,15 @@
   .mobile-game-toolbar .bond-icon { font-size:23px!important; }
   .mobile-game-toolbar #money-counter b, .mobile-game-toolbar #bond-counter b { min-width:24px; font-size:18px; }
   .mobile-game-toolbar #achievement-counter b { min-width:25px; font-size:12px; }
+  @media (max-width:430px) {
+    .mobile-game-toolbar { gap:5px; padding-right:5px; padding-left:5px; }
+    .mobile-game-toolbar .sound, .mobile-game-fullscreen, .mobile-toolbar-pause { min-width:40px; padding-right:7px; padding-left:7px; }
+    .mobile-game-toolbar #score-counters { gap:3px; }
+    .mobile-game-toolbar #money-counter, .mobile-game-toolbar #bond-counter, .mobile-game-toolbar #achievement-counter { padding-right:5px; padding-left:4px; gap:3px; }
+    .mobile-game-toolbar .counter-icon { width:19px; height:19px; flex-basis:19px; }
+    .mobile-game-toolbar #money-counter b, .mobile-game-toolbar #bond-counter b { min-width:19px; font-size:15px; }
+    .mobile-game-toolbar #achievement-counter b { min-width:22px; font-size:10px; }
+  }
   .mobile-game-shell .touch-controls { position:absolute; z-index:15; inset:auto 0 0; display:flex!important; align-items:end; justify-content:space-between; gap:12px; padding:12px max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); border:0; background:linear-gradient(transparent,rgba(8,18,13,.84)); pointer-events:none; }
   .mobile-game-shell .touch-controls>* { pointer-events:auto; }
   .mobile-game-shell .joystick { width:112px; height:112px; background:rgba(26,40,31,.82); }
