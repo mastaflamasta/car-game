@@ -29,10 +29,10 @@ family.forEach(member=>{member.room=member.aboard?'car':'outside';member.joined=
 const familyPhotos=[
   {label:'Dagmara',src:'images/mama-dagmara.jpg',pixel:'images/mama-dagmara-pixel.png',pixelCrop:[.12,.02,.76,.89],crop:[.05,.025,.88,.81]},
   {label:'Andrzej',src:'images/tata-andrzej.jpg',pixel:'images/tata-andrzej-pixel.png',pixelCrop:[.13,.01,.74,.86],crop:[.025,.015,.92,.875]},
-  {label:'Córka · Nela',src:'images/corka-nela.jpg',pixel:'images/corka-nela-pixel.png',pixelCrop:[.08,.01,.84,.98],crop:[.04,.015,.92,.875]},
-  {label:'Córka · Tosia',srcs:['images/corka-tosia.jpg','images/corka-tosia.png'],pixel:'images/corka-tosia-pixel.png',pixelCrop:[.08,.01,.84,.98],crop:[0,.03,1,.91]},
-  {label:'Córka · Łucja',srcs:['images/corka-łucja.jpg','images/corka-łucja.png','images/corka-lucja.jpg','images/corka-lucja.png'],pixel:'images/corka-łucja-pixel.png',pixelCrop:[.1,.01,.8,.93],crop:[0,.04,1,.875]},
-  {label:'Koleżanka · Kasia',src:'images/kolazanka-kasia.jpg',pixel:'images/kolazanka-kasia-pixel.png',pixelCrop:[.05,.01,.9,.96],crop:[0,0,1,1]}
+  {label:'Nela',src:'images/corka-nela.jpg',pixel:'images/corka-nela-pixel.png',pixelCrop:[.08,.01,.84,.98],crop:[.04,.015,.92,.875]},
+  {label:'Tosia',srcs:['images/corka-tosia.jpg','images/corka-tosia.png'],pixel:'images/corka-tosia-pixel.png',pixelCrop:[.08,.01,.84,.98],crop:[0,.03,1,.91]},
+  {label:'Łucja',srcs:['images/corka-łucja.jpg','images/corka-łucja.png','images/corka-lucja.jpg','images/corka-lucja.png'],pixel:'images/corka-łucja-pixel.png',pixelCrop:[.1,.01,.8,.93],crop:[0,.04,1,.875]},
+  {label:'Kasia',src:'images/kolazanka-kasia.jpg',pixel:'images/kolazanka-kasia-pixel.png',pixelCrop:[.05,.01,.9,.96],crop:[0,0,1,1]}
 ];
 let characterStyle='photo';
 try{characterStyle=window.localStorage?.getItem('roadfamily-character-style')==='pixel'?'pixel':'photo'}catch{}
